@@ -1,6 +1,7 @@
-// 📖 VERSÃO 2: Employee com Validações e Enum
+// 🎯 EMPLOYEE MODEL - VERSÃO FINAL
+// Sistema de Monitoramento SENAI - Pulseiras IoT
 
-// 🎯 ENUM: Valores fixos para Setor (evita typos e inconsistências)
+// 📖 ENUM: Setores da empresa
 enum Setor {
   producao('Produção'),
   manutencao('Manutenção'), 
@@ -8,11 +9,9 @@ enum Setor {
   administrativo('Administrativo'),
   seguranca('Segurança');
   
-  // 📖 CONCEITO: Enum com valor amigável
   const Setor(this.displayName);
   final String displayName;
   
-  // 🔄 Converter string para enum
   static Setor fromString(String value) {
     switch (value.toLowerCase()) {
       case 'producao':
@@ -34,136 +33,157 @@ enum Setor {
   }
 }
 
+// 👤 CLASSE PRINCIPAL: Funcionário
 class Employee {
+  // 🔒 DADOS IMUTÁVEIS (identidade)
   final String id;
   final String nome;
+  final DateTime dataAdmissao;
+  
+  // 🔄 DADOS MUTÁVEIS (situação atual)
   String email;
-  Setor setor;           // 🔄 Agora usa enum em vez de String
-  final DateTime dataAdmissao; // 📅 Data de quando entrou na empresa
+  Setor setor;
   bool ativo;
   
-  // 📖 CONCEITO: Constructor com validação
+  // 🏗️ CONSTRUCTOR COM VALIDAÇÕES
   Employee({
     required this.id,
     required this.nome,
+    required this.dataAdmissao,
     required this.email,
     required this.setor,
-    required this.dataAdmissao,
     this.ativo = true,
   }) {
-    // 🔍 VALIDAÇÕES - Bloqueia dados inválidos
-    
-    // Validar ID
-    if (id.trim().isEmpty) {
-      throw ArgumentError('❌ ID não pode estar vazio');
-    }
-    if (id.length < 3) {
+    // Validações críticas
+    if (id.trim().isEmpty || id.length < 3) {
       throw ArgumentError('❌ ID deve ter pelo menos 3 caracteres');
     }
-    
-    // Validar Nome
-    if (nome.trim().isEmpty) {
-      throw ArgumentError('❌ Nome não pode estar vazio');
-    }
-    if (nome.trim().length < 2) {
+    if (nome.trim().isEmpty || nome.trim().length < 2) {
       throw ArgumentError('❌ Nome deve ter pelo menos 2 caracteres');
     }
-    
-    // Validar Email
     if (!_isValidEmail(email)) {
       throw ArgumentError('❌ Email inválido: $email');
     }
-    
-    // Validar Data de Admissão
     if (dataAdmissao.isAfter(DateTime.now())) {
       throw ArgumentError('❌ Data de admissão não pode ser no futuro');
     }
-    
-    // Data muito antiga (mais de 50 anos atrás)
-    final dataMinima = DateTime.now().subtract(Duration(days: 365 * 50));
-    if (dataAdmissao.isBefore(dataMinima)) {
-      throw ArgumentError('❌ Data de admissão muito antiga');
+  }
+  
+  // 🏭 FACTORY: Criar a partir de JSON
+  factory Employee.fromJson(Map<String, dynamic> json) {
+    try {
+      return Employee(
+        id: json['id']?.toString() ?? '',
+        nome: json['nome']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        setor: Setor.fromString(json['setor']?.toString() ?? ''),
+        dataAdmissao: DateTime.parse(json['data_admissao']?.toString() ?? ''),
+        ativo: json['ativo'] == true,
+      );
+    } catch (e) {
+      throw ArgumentError('❌ Erro ao converter JSON: $e');
     }
   }
   
-  // 🔍 MÉTODO PRIVADO: Validação de email
-  bool _isValidEmail(String email) {
-    // Regex simples para email: algo@algo.algo
-    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+').hasMatch(email);
+  // 📤 CONVERSÃO PARA JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nome': nome,
+      'email': email,
+      'setor': setor.name,
+      'setor_display': setor.displayName,
+      'data_admissao': dataAdmissao.toIso8601String(),
+      'ativo': ativo,
+      'tempo_empresa_anos': tempoEmpresaAnos,
+      'is_veterano': isVeterano,
+      'status': statusDetalhado,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
   }
   
-  // 📖 CONCEITO: Getter calculado (tempo de empresa)
-  int get tempoEmpresaAnos {
-    final agora = DateTime.now();
-    final diferenca = agora.difference(dataAdmissao);
-    return (diferenca.inDays / 365).floor();
+  Map<String, dynamic> toJsonCompact() {
+    return {
+      'id': id,
+      'nome': nome,
+      'email': email,
+      'setor': setor.name,
+      'ativo': ativo,
+    };
   }
   
-  // 📖 CONCEITO: Método para verificar se é veterano
-  bool get isVeterano => tempoEmpresaAnos >= 5;
-  
-  // 📖 CONCEITO: Métodos para atualizar dados mutáveis
-  
-  // 📧 Atualizar email
+  // 🔧 MÉTODOS DE ATUALIZAÇÃO
   void atualizarEmail(String novoEmail) {
     if (!_isValidEmail(novoEmail)) {
       throw ArgumentError('❌ Email inválido: $novoEmail');
     }
-    
-    final emailAntigo = email;
     email = novoEmail;
-    print('📧 ${nome}: Email atualizado de $emailAntigo para $novoEmail');
   }
   
-  // 🏭 Transferir/promover para outro setor
   void transferirSetor(Setor novoSetor, {String? motivo}) {
-    final setorAntigo = setor;
     setor = novoSetor;
-    
-    final motivoTexto = motivo ?? 'transferência administrativa';
-    print('🚀 ${nome}: ${setorAntigo.displayName} → ${novoSetor.displayName} ($motivoTexto)');
   }
   
-  // 📱 Gerenciar status da pulseira
-  void ativar() {
-    if (ativo) {
-      print('ℹ️  ${nome} já está ativo');
-      return;
-    }
-    ativo = true;
-    print('✅ ${nome}: Pulseira conectada');
+  void ativar() => ativo = true;
+  void desativar({String? motivo}) => ativo = false;
+  
+  // 📊 GETTERS CALCULADOS
+  int get tempoEmpresaAnos {
+    final diferenca = DateTime.now().difference(dataAdmissao);
+    return (diferenca.inDays / 365).floor();
   }
   
-  void desativar({String? motivo}) {
-    if (!ativo) {
-      print('ℹ️  ${nome} já está inativo');
-      return;
-    }
-    ativo = false;
-    final motivoTexto = motivo ?? 'não especificado';
-    print('❌ ${nome}: Pulseira desconectada ($motivoTexto)');
-  }
+  bool get isVeterano => tempoEmpresaAnos >= 5;
   
-  // 📖 CONCEITO: Status e informações detalhadas
   String get statusDetalhado {
     final status = ativo ? '🟢 Conectado' : '🔴 Desconectado';
-    return '$status | ${setor.displayName} | ${email}';
+    return '$status | ${setor.displayName}';
   }
   
-  // 📋 Histórico de mudanças (simulado)
-  String get resumoProfissional {
-    return '''
-👤 ${nome} (${id})
-📧 Email: ${email}
-🏭 Setor Atual: ${setor.displayName}
-📅 Na empresa há ${tempoEmpresaAnos} anos (desde ${dataAdmissao.year})
-📱 Pulseira: ${ativo ? "Conectada" : "Desconectada"}
-🏆 ${isVeterano ? "Funcionário Veterano" : "Em desenvolvimento"}
-    '''.trim();
+  // 🔍 VALIDAÇÃO PRIVADA
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
   
+  // 📋 DEBUG
   @override
   String toString() {
     return 'Employee(${id}: ${nome}, ${setor.displayName}, ${ativo ? "ativo" : "inativo"})';
   }
+  
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) || (other is Employee && other.id == id);
+  }
+  
+  @override
+  int get hashCode => id.hashCode;
 }
+
+/*
+🎓 RESUMO DO QUE VOCÊ APRENDEU:
+
+✅ CONCEITOS FUNDAMENTAIS:
+- Classes vs Maps
+- final vs mutável
+- Enum para consistência
+- Validações robustas
+
+✅ CONCEITOS AVANÇADOS:
+- Factory constructors
+- Serialização JSON
+- Getters calculados
+- Métodos de atualização seguros
+
+✅ DESIGN PATTERNS:
+- Encapsulamento
+- Validation
+- Immutability estratégica
+- Domain-driven design
+
+🚀 PRÓXIMOS PASSOS:
+- Integrar com Firebase
+- Criar endpoints REST
+- Receber dados das pulseiras
+- Deploy em produção
+*/
