@@ -13,10 +13,17 @@ pubspec.lock
 *.ipr
 *.iws
 
-# Environment variables (SEGURANÇA!)
+# 🔒 ARQUIVOS SENSÍVEIS - NUNCA VERSIONAR!
 .env
 config/firebase-service-account.json
-*.json
+*.key
+*.pem
+secrets/
+
+# Environment variables
+.env.local
+.env.production
+.env.staging
 
 # OS files
 .DS_Store
@@ -24,6 +31,7 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
 # Coverage
 coverage/
@@ -37,3 +45,11 @@ coverage/
 *.js_
 *.js.deps
 *.js.map
+
+# Database
+*.db
+*.sqlite
+
+# Docker
+.dockerignore
+Dockerfile.local

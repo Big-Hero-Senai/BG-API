@@ -1,20 +1,49 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:dotenv/dotenv.dart';
 import '../models/employee.dart';
 
 // 🔥 SERVICE: Comunicação com Firebase Firestore
 class FirebaseService {
   static final _logger = Logger('FirebaseService');
   
-  // 🔧 CONFIGURAÇÃO - ALTERE AQUI COM SEU PROJETO!
-  static const String projectId = 'senai-monitoring-api';  // ✅ CORRETO!
-  static const String baseUrl = 'https://firestore.googleapis.com/v1';
+  // 🔧 CONFIGURAÇÃO SEGURA - Via variáveis de ambiente
+  static late final String projectId;
+  static late final String baseUrl;
   static const String collection = 'employees';
+  
+  // 📖 CONCEITO: Inicialização segura
+  static void _initializeConfig() {
+    // Carregar variáveis de ambiente
+    final env = DotEnv();
+    
+    // Tentar carregar .env, se falhar usar variáveis do sistema
+    try {
+      env.load();
+    } catch (e) {
+      _logger.warning('⚠️ Arquivo .env não encontrado, usando variáveis do sistema');
+    }
+    
+    // Buscar Project ID (prioridade: .env -> variável sistema -> erro)
+    projectId = env['FIREBASE_PROJECT_ID'] ?? 
+                Platform.environment['FIREBASE_PROJECT_ID'] ?? 
+                'senai-monitoring-api'; // fallback padrão
+    
+    baseUrl = 'https://firestore.googleapis.com/v1';
+    
+    _logger.info('🔧 Configuração carregada:');
+    _logger.info('   Project ID: $projectId');
+    _logger.info('   Base URL: $baseUrl');
+  }
   
   // 📖 CONCEITO: Singleton Pattern (uma única instância)
   static final FirebaseService _instance = FirebaseService._internal();
-  factory FirebaseService() => _instance;
+  factory FirebaseService() {
+    _initializeConfig(); // Garantir que config está carregada
+    return _instance;
+  }
   FirebaseService._internal();
   
   // 🌐 Cliente HTTP reutilizável
@@ -236,3 +265,32 @@ class FirebaseService {
     _client.close();
   }
 }
+
+/*
+🎓 CONCEITOS IMPORTANTES:
+
+1. 🔥 **Firebase REST API**
+   - Usa HTTP em vez de SDK nativo
+   - Mais controle e simplicidade
+   - Funciona em qualquer ambiente
+
+2. 📋 **Formato Firebase**
+   - Campos têm tipos explícitos: {'stringValue': 'texto'}
+   - Timestamps em ISO8601: {'timestampValue': '2025-06-07T...'}
+   - Booleans: {'booleanValue': true}
+
+3. 🔄 **CRUD Operations**
+   - GET: buscar dados
+   - PATCH: criar/atualizar
+   - DELETE: remover
+
+4. 🛡️ **Error Handling**
+   - Try/catch em cada operação
+   - Logs estruturados
+   - HTTP status codes tratados
+
+5. 🎯 **Singleton Pattern**
+   - Uma única instância do serviço
+   - Reutilização de conexão HTTP
+   - Gerenciamento eficiente de recursos
+*/
