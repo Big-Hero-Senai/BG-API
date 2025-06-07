@@ -37,10 +37,10 @@ enum Setor {
 class Employee {
   final String id;
   final String nome;
-  final String email;
-  final Setor setor;           // 🔄 Agora usa enum em vez de String
+  String email;
+  Setor setor;           // 🔄 Agora usa enum em vez de String
   final DateTime dataAdmissao; // 📅 Data de quando entrou na empresa
-  final bool ativo;
+  bool ativo;
   
   // 📖 CONCEITO: Constructor com validação
   Employee({
@@ -102,10 +102,68 @@ class Employee {
   // 📖 CONCEITO: Método para verificar se é veterano
   bool get isVeterano => tempoEmpresaAnos >= 5;
   
+  // 📖 CONCEITO: Métodos para atualizar dados mutáveis
+  
+  // 📧 Atualizar email
+  void atualizarEmail(String novoEmail) {
+    if (!_isValidEmail(novoEmail)) {
+      throw ArgumentError('❌ Email inválido: $novoEmail');
+    }
+    
+    final emailAntigo = email;
+    email = novoEmail;
+    print('📧 ${nome}: Email atualizado de $emailAntigo para $novoEmail');
+  }
+  
+  // 🏭 Transferir/promover para outro setor
+  void transferirSetor(Setor novoSetor, {String? motivo}) {
+    final setorAntigo = setor;
+    setor = novoSetor;
+    
+    final motivoTexto = motivo ?? 'transferência administrativa';
+    print('🚀 ${nome}: ${setorAntigo.displayName} → ${novoSetor.displayName} ($motivoTexto)');
+  }
+  
+  // 📱 Gerenciar status da pulseira
+  void ativar() {
+    if (ativo) {
+      print('ℹ️  ${nome} já está ativo');
+      return;
+    }
+    ativo = true;
+    print('✅ ${nome}: Pulseira conectada');
+  }
+  
+  void desativar({String? motivo}) {
+    if (!ativo) {
+      print('ℹ️  ${nome} já está inativo');
+      return;
+    }
+    ativo = false;
+    final motivoTexto = motivo ?? 'não especificado';
+    print('❌ ${nome}: Pulseira desconectada ($motivoTexto)');
+  }
+  
+  // 📖 CONCEITO: Status e informações detalhadas
+  String get statusDetalhado {
+    final status = ativo ? '🟢 Conectado' : '🔴 Desconectado';
+    return '$status | ${setor.displayName} | ${email}';
+  }
+  
+  // 📋 Histórico de mudanças (simulado)
+  String get resumoProfissional {
+    return '''
+👤 ${nome} (${id})
+📧 Email: ${email}
+🏭 Setor Atual: ${setor.displayName}
+📅 Na empresa há ${tempoEmpresaAnos} anos (desde ${dataAdmissao.year})
+📱 Pulseira: ${ativo ? "Conectada" : "Desconectada"}
+🏆 ${isVeterano ? "Funcionário Veterano" : "Em desenvolvimento"}
+    '''.trim();
+  }
+  
   @override
   String toString() {
-    return 'Employee(id: $id, nome: $nome, setor: ${setor.displayName}, '
-           'admissão: ${dataAdmissao.year}, ${tempoEmpresaAnos} anos na empresa)';
+    return 'Employee(${id}: ${nome}, ${setor.displayName}, ${ativo ? "ativo" : "inativo"})';
   }
 }
-
