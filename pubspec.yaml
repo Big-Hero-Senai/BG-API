@@ -1,24 +1,57 @@
 name: senai_monitoring_api
-description: API para monitoramento de funcionários SENAI
+description: API para monitoramento de funcionários SENAI com pulseiras IoT
 version: 1.0.0
-publish_to: 'none' # Não publicar no pub.dev
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  # 🌟 COMEÇANDO SIMPLES - só o essencial!
-  shelf: ^1.4.0           # Framework web minimalista
-  shelf_router: ^1.1.0    # Sistema de rotas /api/employees
-  shelf_cors_headers: ^0.1.5  # Permitir acesso do browser
+  # Framework web minimalista e performático
+  shelf: ^1.4.0
   
-  # 📋 Para logs e debug
+  # Sistema de rotas para Shelf
+  shelf_router: ^1.1.0
+  
+  # Middleware para CORS (Cross-Origin Resource Sharing)
+  shelf_cors_headers: ^0.1.5
+  
+  # Cliente HTTP para Dart (para chamadas externas se necessário)
+  http: ^1.1.0
+  
+  # Gerenciamento de variáveis de ambiente
+  dotenv: ^4.2.0
+  
+  # Anotações para serialização JSON automática
+  json_annotation: ^4.8.1
+  
+  # Utilitários para trabalhar com coleções
+  collection: ^1.17.0
+  
+  # Firebase Admin SDK para Dart (pesquise qual usar)
+  # Opções possíveis:
+  # firebase_dart: ^1.0.0
+  # dart_firebase_admin: ^0.2.0
+  # firedart: ^0.9.0+1
+  
+  # Logging estruturado
   logging: ^1.2.0
+  
+  # UUID para geração de IDs únicos
+  uuid: ^4.1.0
 
 dev_dependencies:
-  lints: ^3.0.0      # Boas práticas de código
-  test: ^1.24.0      # Para testes futuros
+  # Ferramenta de build para code generation
+  build_runner: ^2.4.0
+  
+  # Gerador de código para JSON serialization
+  json_serializable: ^6.7.0
+  
+  # Framework de testes
+  test: ^1.24.0
+  
+  # Linter com regras recomendadas
+  lints: ^3.0.0
 
-# Permite rodar: dart run bin/server
+# Configurações para build_runner (JSON serialization)
 executables:
   server: server
