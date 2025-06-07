@@ -1,0 +1,39 @@
+# Build outputs
+/build/
+/.dart_tool/
+
+# Pub packages
+.packages
+pubspec.lock
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Environment variables (SEGURANÇA!)
+.env
+config/firebase-service-account.json
+*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Dart compiled files
+*.dart.js
+*.js_
+*.js.deps
+*.js.map

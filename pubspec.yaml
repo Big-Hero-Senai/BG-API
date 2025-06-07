@@ -1,0 +1,24 @@
+name: senai_monitoring_api
+description: API para monitoramento de funcionários SENAI
+version: 1.0.0
+publish_to: 'none' # Não publicar no pub.dev
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  # 🌟 COMEÇANDO SIMPLES - só o essencial!
+  shelf: ^1.4.0           # Framework web minimalista
+  shelf_router: ^1.1.0    # Sistema de rotas /api/employees
+  shelf_cors_headers: ^0.1.5  # Permitir acesso do browser
+  
+  # 📋 Para logs e debug
+  logging: ^1.2.0
+
+dev_dependencies:
+  lints: ^3.0.0      # Boas práticas de código
+  test: ^1.24.0      # Para testes futuros
+
+# Permite rodar: dart run bin/server
+executables:
+  server: server
