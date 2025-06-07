@@ -159,31 +159,3 @@ class Employee {
   @override
   int get hashCode => id.hashCode;
 }
-
-/*
-🎓 RESUMO DO QUE VOCÊ APRENDEU:
-
-✅ CONCEITOS FUNDAMENTAIS:
-- Classes vs Maps
-- final vs mutável
-- Enum para consistência
-- Validações robustas
-
-✅ CONCEITOS AVANÇADOS:
-- Factory constructors
-- Serialização JSON
-- Getters calculados
-- Métodos de atualização seguros
-
-✅ DESIGN PATTERNS:
-- Encapsulamento
-- Validation
-- Immutability estratégica
-- Domain-driven design
-
-🚀 PRÓXIMOS PASSOS:
-- Integrar com Firebase
-- Criar endpoints REST
-- Receber dados das pulseiras
-- Deploy em produção
-*/

@@ -236,32 +236,3 @@ class FirebaseService {
     _client.close();
   }
 }
-
-/*
-🎓 CONCEITOS IMPORTANTES:
-
-1. 🔥 **Firebase REST API**
-   - Usa HTTP em vez de SDK nativo
-   - Mais controle e simplicidade
-   - Funciona em qualquer ambiente
-
-2. 📋 **Formato Firebase**
-   - Campos têm tipos explícitos: {'stringValue': 'texto'}
-   - Timestamps em ISO8601: {'timestampValue': '2025-06-07T...'}
-   - Booleans: {'booleanValue': true}
-
-3. 🔄 **CRUD Operations**
-   - GET: buscar dados
-   - PATCH: criar/atualizar
-   - DELETE: remover
-
-4. 🛡️ **Error Handling**
-   - Try/catch em cada operação
-   - Logs estruturados
-   - HTTP status codes tratados
-
-5. 🎯 **Singleton Pattern**
-   - Uma única instância do serviço
-   - Reutilização de conexão HTTP
-   - Gerenciamento eficiente de recursos
-*/

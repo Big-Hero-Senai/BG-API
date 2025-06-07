@@ -1,105 +1,90 @@
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 import 'package:logging/logging.dart';
+import '../lib/src/routes/api_routes.dart';
+import '../lib/src/services/firebase_service.dart';
 
-// 📖 CONCEITO: Logger para debug
+// 📖 SERVIDOR PRINCIPAL - API REST COMPLETA
 final _logger = Logger('SenaiAPI');
 
 void main() async {
-  // 📖 CONCEITO: Configurar logs para ver o que está acontecendo
+  // 📋 CONFIGURAR LOGS
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
     print('${record.level.name}: ${record.time}: ${record.message}');
   });
 
-  _logger.info('🚀 Iniciando API do SENAI...');
+  _logger.info('🚀 Iniciando SENAI Monitoring API...');
 
-  // 📖 CONCEITO: Router - mapeamento de URLs
-  final router = Router();
-
-  // 🎯 ROTA BÁSICA: Verificar se API está funcionando
-  router.get('/health', (Request request) {
-    _logger.info('✅ Health check solicitado');
-    return Response.ok(
-      '{"status": "healthy", "service": "SENAI Monitoring API", "timestamp": "${DateTime.now().toIso8601String()}"}',
-      headers: {'Content-Type': 'application/json'},
-    );
-  });
-
-  // 🎯 ROTA: Página inicial amigável
-  router.get('/', (Request request) {
-    return Response.ok('''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>SENAI Monitoring API</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
-        .status { color: #28a745; font-weight: bold; }
-        .endpoint { background: #f8f9fa; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🏭 SENAI Monitoring API</h1>
-        <p class="status">✅ API Online e Funcionando!</p>
-        
-        <h3>📋 Endpoints Disponíveis:</h3>
-        <div class="endpoint"><strong>GET /health</strong> - Status da API</div>
-        <div class="endpoint"><strong>GET /api/employees</strong> - Listar funcionários (em breve)</div>
-        
-        <p><small>Desenvolvido para monitoramento de funcionários com pulseiras IoT</small></p>
-    </div>
-</body>
-</html>
-    ''', headers: {'Content-Type': 'text/html'});
-  });
-
-  // 📖 CONCEITO: Middleware Pipeline
-  // Como uma linha de produção: cada middleware processa a requisição
-  final pipeline = Pipeline()
-      .addMiddleware(logRequests())     // 1️⃣ Primeiro: logar todas as requisições
-      .addMiddleware(corsHeaders())     // 2️⃣ Segundo: adicionar headers CORS
-      .addHandler(router.call);         // 3️⃣ Último: processar a rota
-
-  // 📖 CONCEITO: Porta do servidor
-  const port = 8080; // Padrão para desenvolvimento
+  // 🔥 TESTAR CONEXÃO FIREBASE
+  final firebaseService = FirebaseService();
+  final connected = await firebaseService.testConnection();
   
-  // 🚀 INICIAR SERVIDOR
+  if (!connected) {
+    _logger.severe('❌ Falha na conexão com Firebase! Abortando...');
+    return;
+  }
+  
+  _logger.info('✅ Firebase conectado com sucesso!');
+
+  // 🗺️ CONFIGURAR ROTAS
+  final apiRoutes = ApiRoutes();
+  final router = apiRoutes.router;
+
+  // 📖 CONCEITO: Middleware Pipeline Completo
+  final pipeline = Pipeline()
+      .addMiddleware(logRequests())                    // 1️⃣ Log de todas requisições
+      .addMiddleware(corsHeaders())                    // 2️⃣ CORS configurado
+      .addMiddleware(_errorHandler)                    // 3️⃣ Tratamento de erros global
+      .addHandler(router.call);                       // 4️⃣ Processar rotas
+
+  // 🌐 INICIAR SERVIDOR
+  const port = 8080;
   final server = await shelf_io.serve(pipeline, 'localhost', port);
   
   _logger.info('🌐 Servidor rodando em http://localhost:$port');
-  _logger.info('🔍 Teste: http://localhost:$port/health');
+  _logger.info('📋 Endpoints disponíveis:');
+  _logger.info('   🏠 GET  /                    - Documentação');
+  _logger.info('   📊 GET  /api                 - Info da API');
+  _logger.info('   🏥 GET  /health              - Health check');
+  _logger.info('   👥 GET  /api/employees       - Listar funcionários');
+  _logger.info('   🔍 GET  /api/employees/:id   - Buscar por ID');
+  _logger.info('   ➕ POST /api/employees       - Criar funcionário');
+  _logger.info('   🔄 PUT  /api/employees/:id   - Atualizar funcionário');
+  _logger.info('   🗑️ DELETE /api/employees/:id - Deletar funcionário');
   
-  print(''); // Linha em branco para clareza
+  print('');
   print('🎯 SENAI Monitoring API');
   print('📍 http://localhost:$port');
+  print('📖 Documentação: http://localhost:$port');
+  print('🧪 Health Check: http://localhost:$port/health');
+  print('👥 Funcionários: http://localhost:$port/api/employees');
   print('💡 Pressione Ctrl+C para parar');
+  print('');
+  
+  _logger.info('🎉 API iniciada com sucesso!');
 }
 
-// 📖 CONCEITO: CORS Middleware
-// Middleware que adiciona headers CORS em todas as respostas
-Middleware corsHeaders() {
-  return (Handler innerHandler) {
-    return (Request request) async {
-      // ✨ CONCEITO: Interceptar requisição OPTIONS (preflight)
-      if (request.method == 'OPTIONS') {
-        return Response.ok('', headers: _corsHeaders);
-      }
+// 🛡️ MIDDLEWARE: Tratamento de erros global
+Middleware _errorHandler = (Handler innerHandler) {
+  return (Request request) async {
+    try {
+      return await innerHandler(request);
+    } catch (error, stackTrace) {
+      _logger.severe('❌ Erro não tratado: $error');
+      _logger.severe('📋 Stack trace: $stackTrace');
       
-      // ✨ CONCEITO: Processar requisição normal e adicionar headers CORS
-      final response = await innerHandler(request);
-      return response.change(headers: _corsHeaders);
-    };
+      final errorResponse = {
+        'error': true,
+        'message': 'Erro interno do servidor',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+      
+      return Response.internalServerError(
+        body: '${errorResponse}',
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
   };
-}
-
-// 📖 CONCEITO: Headers CORS explicados
-const _corsHeaders = {
-  'Access-Control-Allow-Origin': '*',           // 🌍 Qualquer origem pode acessar
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', // 📋 Métodos permitidos
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',      // 📄 Headers permitidos
 };
