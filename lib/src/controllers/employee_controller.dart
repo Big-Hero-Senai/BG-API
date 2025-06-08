@@ -3,58 +3,27 @@ import 'package:shelf/shelf.dart';
 import 'package:logging/logging.dart';
 import '../models/employee.dart';
 import '../services/firebase_service.dart';
+import '../services/validation_service.dart';
+import '../utils/response_helper.dart';
 
-// 🎯 CONTROLLER: Lógica dos endpoints REST
+// 🎯 CONTROLLER REFATORADO: Simples e focado
 class EmployeeController {
   static final _logger = Logger('EmployeeController');
   final FirebaseService _firebaseService = FirebaseService();
   
-  // 📖 CONCEITO: Headers de resposta JSON padrão
-  Map<String, String> get _jsonHeaders => {
-    'Content-Type': 'application/json; charset=utf-8',
-  };
-  
-  // 📖 CONCEITO: Response helper para erros
-  Response _errorResponse(int statusCode, String message, {String? details}) {
-    final error = {
-      'error': true,
-      'message': message,
-      'details': details,
-      'timestamp': DateTime.now().toIso8601String(),
-      'status_code': statusCode,
-    };
-    
-    _logger.warning('❌ Error $statusCode: $message');
-    return Response(statusCode, body: jsonEncode(error), headers: _jsonHeaders);
-  }
-  
-  // 📖 CONCEITO: Response helper para sucesso
-  Response _successResponse(dynamic data, {int statusCode = 200, String? message}) {
-    final response = {
-      'success': true,
-      'data': data,
-      'message': message,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-    
-    return Response(statusCode, body: jsonEncode(response), headers: _jsonHeaders);
-  }
-  
-  // 📋 GET /api/employees - Lista todos os funcionários
+  // 📋 GET /api/employees - Lista todos os funcionários  
   Future<Response> getAllEmployees(Request request) async {
     try {
       _logger.info('📋 GET /api/employees - Listando funcionários');
       
       final employees = await _firebaseService.getAllEmployees();
+      final employeesJson = employees.map((e) => e.toJson()).toList();
       
       _logger.info('✅ ${employees.length} funcionários encontrados');
       
-      return _successResponse(
-        employees.map((e) => e.toJson()).toList(),
-        message: '${employees.length} funcionários encontrados',
-      );
+      return ResponseHelper.listSuccess(employeesJson);
     } catch (e) {
-      return _errorResponse(500, 'Erro interno do servidor', details: e.toString());
+      return ResponseHelper.internalError(details: e.toString());
     }
   }
   
@@ -63,25 +32,22 @@ class EmployeeController {
     try {
       _logger.info('🔍 GET /api/employees/$id - Buscando funcionário');
       
-      // Validar ID
-      if (id.trim().isEmpty) {
-        return _errorResponse(400, 'ID do funcionário é obrigatório');
+      // Validar ID usando ValidationService
+      final idValidation = ValidationService.validateEmployeeId(id);
+      if (!idValidation.isValid) {
+        return ResponseHelper.badRequest(idValidation.error!, details: idValidation.details);
       }
       
       final employee = await _firebaseService.getEmployeeById(id);
       
       if (employee == null) {
-        return _errorResponse(404, 'Funcionário não encontrado', details: 'ID: $id');
+        return ResponseHelper.employeeNotFound(id);
       }
       
       _logger.info('✅ Funcionário encontrado: ${employee.nome}');
-      
-      return _successResponse(
-        employee.toJson(),
-        message: 'Funcionário encontrado',
-      );
+      return ResponseHelper.employeeSuccess(employee.toJson());
     } catch (e) {
-      return _errorResponse(500, 'Erro interno do servidor', details: e.toString());
+      return ResponseHelper.internalError(details: e.toString());
     }
   }
   
@@ -90,46 +56,46 @@ class EmployeeController {
     try {
       _logger.info('➕ POST /api/employees - Criando funcionário');
       
-      // Ler corpo da requisição
+      // Ler e validar JSON
       final body = await request.readAsString();
       if (body.isEmpty) {
-        return _errorResponse(400, 'Corpo da requisição vazio');
+        return ResponseHelper.badRequest('Corpo da requisição vazio');
       }
       
-      // Parse JSON
       Map<String, dynamic> json;
       try {
         json = jsonDecode(body);
       } catch (e) {
-        return _errorResponse(400, 'JSON inválido', details: e.toString());
+        return ResponseHelper.badRequest('JSON inválido', details: e.toString());
       }
       
-      // Criar Employee a partir do JSON
+      // Validar dados usando ValidationService
+      final validation = ValidationService.validateEmployeeCreation(json);
+      if (!validation.isValid) {
+        return ResponseHelper.validationError(validation.error!, details: validation.details);
+      }
+      
+      // Criar Employee
       Employee employee;
       try {
         employee = Employee.fromJson(json);
       } catch (e) {
-        return _errorResponse(400, 'Dados de funcionário inválidos', details: e.toString());
+        return ResponseHelper.badRequest('Dados de funcionário inválidos', details: e.toString());
       }
       
       // Verificar se já existe
       final existing = await _firebaseService.getEmployeeById(employee.id);
       if (existing != null) {
-        return _errorResponse(409, 'Funcionário já existe', details: 'ID: ${employee.id}');
+        return ResponseHelper.employeeAlreadyExists(employee.id);
       }
       
       // Criar no Firebase
       final created = await _firebaseService.createEmployee(employee);
       
       _logger.info('✅ Funcionário criado: ${created.nome}');
-      
-      return _successResponse(
-        created.toJson(),
-        statusCode: 201,
-        message: 'Funcionário criado com sucesso',
-      );
+      return ResponseHelper.employeeCreated(created.toJson());
     } catch (e) {
-      return _errorResponse(500, 'Erro interno do servidor', details: e.toString());
+      return ResponseHelper.internalError(details: e.toString());
     }
   }
   
@@ -139,42 +105,48 @@ class EmployeeController {
       _logger.info('🔄 PUT /api/employees/$id - Atualizando funcionário');
       
       // Validar ID
-      if (id.trim().isEmpty) {
-        return _errorResponse(400, 'ID do funcionário é obrigatório');
+      final idValidation = ValidationService.validateEmployeeId(id);
+      if (!idValidation.isValid) {
+        return ResponseHelper.badRequest(idValidation.error!, details: idValidation.details);
       }
       
       // Verificar se existe
       final existing = await _firebaseService.getEmployeeById(id);
       if (existing == null) {
-        return _errorResponse(404, 'Funcionário não encontrado', details: 'ID: $id');
+        return ResponseHelper.employeeNotFound(id);
       }
       
-      // Ler corpo da requisição
+      // Ler e validar JSON
       final body = await request.readAsString();
       if (body.isEmpty) {
-        return _errorResponse(400, 'Corpo da requisição vazio');
+        return ResponseHelper.badRequest('Corpo da requisição vazio');
       }
       
-      // Parse JSON
       Map<String, dynamic> json;
       try {
         json = jsonDecode(body);
       } catch (e) {
-        return _errorResponse(400, 'JSON inválido', details: e.toString());
+        return ResponseHelper.badRequest('JSON inválido', details: e.toString());
       }
       
-      // Atualizar campos mutáveis
+      // Validar dados de atualização
+      final validation = ValidationService.validateEmployeeUpdate(json);
+      if (!validation.isValid) {
+        return ResponseHelper.validationError(validation.error!, details: validation.details);
+      }
+      
+      // Aplicar atualizações
       try {
-        if (json['email'] != null) {
+        if (json.containsKey('email')) {
           existing.atualizarEmail(json['email'].toString());
         }
         
-        if (json['setor'] != null) {
+        if (json.containsKey('setor')) {
           final novoSetor = Setor.fromString(json['setor'].toString());
           existing.transferirSetor(novoSetor, motivo: 'atualização via API');
         }
         
-        if (json['ativo'] != null) {
+        if (json.containsKey('ativo')) {
           if (json['ativo'] == true) {
             existing.ativar();
           } else {
@@ -182,20 +154,16 @@ class EmployeeController {
           }
         }
       } catch (e) {
-        return _errorResponse(400, 'Dados de atualização inválidos', details: e.toString());
+        return ResponseHelper.badRequest('Erro ao aplicar atualizações', details: e.toString());
       }
       
       // Salvar no Firebase
       final updated = await _firebaseService.updateEmployee(existing);
       
       _logger.info('✅ Funcionário atualizado: ${updated.nome}');
-      
-      return _successResponse(
-        updated.toJson(),
-        message: 'Funcionário atualizado com sucesso',
-      );
+      return ResponseHelper.employeeUpdated(updated.toJson());
     } catch (e) {
-      return _errorResponse(500, 'Erro interno do servidor', details: e.toString());
+      return ResponseHelper.internalError(details: e.toString());
     }
   }
   
@@ -205,14 +173,15 @@ class EmployeeController {
       _logger.info('🗑️ DELETE /api/employees/$id - Removendo funcionário');
       
       // Validar ID
-      if (id.trim().isEmpty) {
-        return _errorResponse(400, 'ID do funcionário é obrigatório');
+      final idValidation = ValidationService.validateEmployeeId(id);
+      if (!idValidation.isValid) {
+        return ResponseHelper.badRequest(idValidation.error!, details: idValidation.details);
       }
       
       // Verificar se existe
       final existing = await _firebaseService.getEmployeeById(id);
       if (existing == null) {
-        return _errorResponse(404, 'Funcionário não encontrado', details: 'ID: $id');
+        return ResponseHelper.employeeNotFound(id);
       }
       
       // Deletar do Firebase
@@ -220,16 +189,12 @@ class EmployeeController {
       
       if (deleted) {
         _logger.info('✅ Funcionário removido: $id');
-        
-        return _successResponse(
-          {'id': id, 'deleted': true},
-          message: 'Funcionário removido com sucesso',
-        );
+        return ResponseHelper.employeeDeleted(id);
       } else {
-        return _errorResponse(500, 'Falha ao remover funcionário');
+        return ResponseHelper.internalError(details: 'Falha ao remover funcionário');
       }
     } catch (e) {
-      return _errorResponse(500, 'Erro interno do servidor', details: e.toString());
+      return ResponseHelper.internalError(details: e.toString());
     }
   }
 }

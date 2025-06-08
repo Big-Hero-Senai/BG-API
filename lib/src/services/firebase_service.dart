@@ -10,12 +10,32 @@ class FirebaseService {
   static final _logger = Logger('FirebaseService');
   
   // 🔧 CONFIGURAÇÃO SEGURA - Via variáveis de ambiente
-  static late final String projectId;
-  static late final String baseUrl;
+  static String? _projectId;  // ✅ Nullable em vez de late
+  static String? _baseUrl;
   static const String collection = 'employees';
   
-  // 📖 CONCEITO: Inicialização segura
+  // 📖 CONCEITO: Getters com inicialização lazy
+  static String get projectId {
+    if (_projectId == null) {
+      _initializeConfig();
+    }
+    return _projectId!;
+  }
+  
+  static String get baseUrl {
+    if (_baseUrl == null) {
+      _initializeConfig();
+    }
+    return _baseUrl!;
+  }
+  
+  // 📖 CONCEITO: Inicialização segura (só uma vez)
   static void _initializeConfig() {
+    // Não inicializar se já foi inicializado
+    if (_projectId != null && _baseUrl != null) {
+      return;
+    }
+    
     // Carregar variáveis de ambiente
     final env = DotEnv();
     
@@ -27,21 +47,24 @@ class FirebaseService {
     }
     
     // Buscar Project ID (prioridade: .env -> variável sistema -> erro)
-    projectId = env['FIREBASE_PROJECT_ID'] ?? 
+    _projectId = env['FIREBASE_PROJECT_ID'] ?? 
                 Platform.environment['FIREBASE_PROJECT_ID'] ?? 
                 'senai-monitoring-api'; // fallback padrão
     
-    baseUrl = 'https://firestore.googleapis.com/v1';
+    _baseUrl = 'https://firestore.googleapis.com/v1';
     
     _logger.info('🔧 Configuração carregada:');
-    _logger.info('   Project ID: $projectId');
-    _logger.info('   Base URL: $baseUrl');
+    _logger.info('   Project ID: $_projectId');
+    _logger.info('   Base URL: $_baseUrl');
   }
   
   // 📖 CONCEITO: Singleton Pattern (uma única instância)
   static final FirebaseService _instance = FirebaseService._internal();
   factory FirebaseService() {
-    _initializeConfig(); // Garantir que config está carregada
+    // ✅ Garantir inicialização sem erro
+    if (_projectId == null || _baseUrl == null) {
+      _initializeConfig();
+    }
     return _instance;
   }
   FirebaseService._internal();
@@ -265,32 +288,3 @@ class FirebaseService {
     _client.close();
   }
 }
-
-/*
-🎓 CONCEITOS IMPORTANTES:
-
-1. 🔥 **Firebase REST API**
-   - Usa HTTP em vez de SDK nativo
-   - Mais controle e simplicidade
-   - Funciona em qualquer ambiente
-
-2. 📋 **Formato Firebase**
-   - Campos têm tipos explícitos: {'stringValue': 'texto'}
-   - Timestamps em ISO8601: {'timestampValue': '2025-06-07T...'}
-   - Booleans: {'booleanValue': true}
-
-3. 🔄 **CRUD Operations**
-   - GET: buscar dados
-   - PATCH: criar/atualizar
-   - DELETE: remover
-
-4. 🛡️ **Error Handling**
-   - Try/catch em cada operação
-   - Logs estruturados
-   - HTTP status codes tratados
-
-5. 🎯 **Singleton Pattern**
-   - Uma única instância do serviço
-   - Reutilização de conexão HTTP
-   - Gerenciamento eficiente de recursos
-*/
