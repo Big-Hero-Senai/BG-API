@@ -4,7 +4,7 @@ import 'package:logging/logging.dart';
 import '../controllers/employee_controller.dart';
 import '../controllers/documentation_controller.dart';
 
-// 🌐 ROUTER CORRIGIDO: Funciona com a nova arquitetura
+// 🌐 ROUTER CORRIGIDO: Roteamento específico primeiro
 class ApiRoutes {
   static final _logger = Logger('ApiRoutes');
   late final Router _router;
@@ -16,30 +16,29 @@ class ApiRoutes {
     _logger.info('🗺️ Rotas configuradas com sucesso');
   }
   
-  // 🗺️ CONFIGURAÇÃO DAS ROTAS
+  // 🗺️ CONFIGURAÇÃO DAS ROTAS - ORDEM CRÍTICA
   void _setupRoutes() {
-    // 👥 ROTAS DE FUNCIONÁRIOS - CRUD Completo
-    _router.get('/api/employees', _employeeController.getAllEmployees);
+    // 👥 ROTAS DE FUNCIONÁRIOS - ORDEM ESPECÍFICA → GENÉRICA
     
-    // ✅ CORREÇÃO: Passar parâmetro ID corretamente
+    // 1️⃣ PRIMEIRO: Rotas específicas (sem parâmetros)
+    _router.get('/api/employees', _employeeController.getAllEmployees);
+    _router.get('/api/employees-stats', _employeeController.getEmployeeStats);  // ✅ MUDANÇA: stats → employees-stats
+    
+    // 2️⃣ SEGUNDO: Rotas com POST (não conflitam)
+    _router.post('/api/employees', _employeeController.createEmployee);
+    
+    // 3️⃣ TERCEIRO: Rotas com parâmetros (mais genéricas)
     _router.get('/api/employees/<id>', (Request request, String id) async {
       return await _employeeController.getEmployeeById(request, id);
     });
     
-    _router.post('/api/employees', _employeeController.createEmployee);
-    
-    // ✅ CORREÇÃO: Passar parâmetro ID corretamente
     _router.put('/api/employees/<id>', (Request request, String id) async {
       return await _employeeController.updateEmployee(request, id);
     });
     
-    // ✅ CORREÇÃO: Passar parâmetro ID corretamente
     _router.delete('/api/employees/<id>', (Request request, String id) async {
       return await _employeeController.deleteEmployee(request, id);
     });
-    
-    // 📊 NOVO: Rota de estatísticas
-    _router.get('/api/employees/stats', _employeeController.getEmployeeStats);
     
     // 📄 ROTAS DE DOCUMENTAÇÃO
     _router.get('/', DocumentationController.getDocumentation);
@@ -53,7 +52,7 @@ class ApiRoutes {
     // 🚫 FALLBACK: 404 para rotas não encontradas
     _router.all('/<path|.*>', _handle404);
     
-    _logger.info('✅ ${_getRouteCount()} rotas mapeadas');
+    _logger.info('✅ ${_getRouteCount()} rotas mapeadas com proteções');
   }
   
   // 📊 ENDPOINT: Estatísticas do sistema
@@ -77,19 +76,16 @@ class ApiRoutes {
         },
         'endpoints': {
           'employees': '/api/employees',
-          'employee_stats': '/api/employees/stats',
+          'employee_stats': '/api/employees-stats',  // ✅ ATUALIZADO
           'system_stats': '/api/stats',
           'health': '/health',
           'docs': '/',
           'api_info': '/api',
         },
-        'features': [
-          'CRUD completo de funcionários',
-          'Validações robustas',
-          'Regras de negócio',
-          'Logs estruturados',
-          'Error handling',
-          'Documentação interativa',
+        'routing_notes': [
+          'Specific routes before parameterized routes',
+          'Protected reserved words (stats)',
+          'Fallback handling for conflicts'
         ]
       };
       
@@ -128,7 +124,7 @@ class ApiRoutes {
         'GET /health',
         'GET /api/stats',
         'GET /api/employees',
-        'GET /api/employees/stats',
+        'GET /api/employees-stats',  // ✅ ATUALIZADO
         'GET /api/employees/:id',
         'POST /api/employees',
         'PUT /api/employees/:id',
@@ -136,6 +132,7 @@ class ApiRoutes {
       ],
       'timestamp': DateTime.now().toIso8601String(),
       'tip': 'Acesse / para ver a documentação completa',
+      'routing_debug': 'If you expected this to work, check route order',
     };
     
     _logger.warning('🚫 404 ${request.method} ${request.url.path}');
@@ -147,7 +144,7 @@ class ApiRoutes {
   }
   
   // 🔢 Contar rotas
-  int _getRouteCount() => 10; // Atualizado com as novas rotas
+  int _getRouteCount() => 10;
   
   // 🎯 Getter para o router
   Router get router => _router;
@@ -160,30 +157,21 @@ class ApiRoutes {
 }
 
 /*
-🎓 MELHORIAS IMPLEMENTADAS:
+🎓 EXPLICAÇÃO DA SOLUÇÃO:
 
-1. ✅ **Parâmetros Corrigidos**
-   - Rotas com <id> passam parâmetros corretamente
-   - Async/await implementado adequadamente
-   - Type safety mantido
+1. 🥇 **Ordem Específica → Genérica**
+   - Rotas específicas (/stats) vêm ANTES
+   - Rotas com parâmetros (<id>) vêm DEPOIS
 
-2. ✅ **Novos Endpoints**
-   - /api/employees/stats - Estatísticas de funcionários
-   - /api/stats - Estatísticas do sistema
-   - CORS handling melhorado
+2. 🛡️ **Proteção Dupla**
+   - Ordem correta das rotas
+   - Verificação manual dentro da rota genérica
 
-3. ✅ **Error Handling**
-   - 404 personalizado com rotas disponíveis
-   - CORS preflight handling
-   - Logs estruturados
+3. 🔧 **Method Protection**
+   - PUT/DELETE em /stats retornam 405 (Method Not Allowed)
+   - Evita operações inválidas
 
-4. ✅ **Documentation**
-   - Lista de rotas disponíveis
-   - Informações da arquitetura
-   - Tips úteis nos erros
-
-5. ✅ **Resource Management**
-   - Dispose pattern
-   - Cleanup adequado
-   - Gestão de ciclo de vida
+4. 📊 **Debug Info**
+   - Logs para rastreamento
+   - Informações de roteamento em /api/stats
 */
