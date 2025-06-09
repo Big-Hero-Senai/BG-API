@@ -1,28 +1,28 @@
 import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:logging/logging.dart';
-import '../models/employee.dart';
-import '../services/firebase_service.dart';
-import '../services/validation_service.dart';
+import '../services/employee_service.dart';  // ✅ MUDANÇA: Usar EmployeeService
 import '../utils/response_helper.dart';
 
-// 🎯 CONTROLLER REFATORADO: Simples e focado
+// 🎯 CONTROLLER ATUALIZADO: Usando nova arquitetura em camadas
 class EmployeeController {
   static final _logger = Logger('EmployeeController');
-  final FirebaseService _firebaseService = FirebaseService();
+  final EmployeeService _employeeService = EmployeeService();  // ✅ MUDANÇA: Service em vez de FirebaseService
   
   // 📋 GET /api/employees - Lista todos os funcionários  
   Future<Response> getAllEmployees(Request request) async {
     try {
       _logger.info('📋 GET /api/employees - Listando funcionários');
       
-      final employees = await _firebaseService.getAllEmployees();
+      // ✅ MUDANÇA: Usar EmployeeService (que já tem regras de negócio)
+      final employees = await _employeeService.getAllEmployees();
       final employeesJson = employees.map((e) => e.toJson()).toList();
       
       _logger.info('✅ ${employees.length} funcionários encontrados');
       
       return ResponseHelper.listSuccess(employeesJson);
     } catch (e) {
+      _logger.severe('❌ Erro ao listar funcionários: $e');
       return ResponseHelper.internalError(details: e.toString());
     }
   }
@@ -32,13 +32,8 @@ class EmployeeController {
     try {
       _logger.info('🔍 GET /api/employees/$id - Buscando funcionário');
       
-      // Validar ID usando ValidationService
-      final idValidation = ValidationService.validateEmployeeId(id);
-      if (!idValidation.isValid) {
-        return ResponseHelper.badRequest(idValidation.error!, details: idValidation.details);
-      }
-      
-      final employee = await _firebaseService.getEmployeeById(id);
+      // ✅ MUDANÇA: EmployeeService já faz validação do ID internamente
+      final employee = await _employeeService.getEmployeeById(id);
       
       if (employee == null) {
         return ResponseHelper.employeeNotFound(id);
@@ -47,6 +42,13 @@ class EmployeeController {
       _logger.info('✅ Funcionário encontrado: ${employee.nome}');
       return ResponseHelper.employeeSuccess(employee.toJson());
     } catch (e) {
+      _logger.severe('❌ Erro ao buscar funcionário $id: $e');
+      
+      // ✅ MELHORIA: Tratar diferentes tipos de erro
+      if (e.toString().contains('InvalidEmployeeDataException')) {
+        return ResponseHelper.badRequest(e.toString().replaceAll('InvalidEmployeeDataException: ', ''));
+      }
+      
       return ResponseHelper.internalError(details: e.toString());
     }
   }
@@ -69,32 +71,29 @@ class EmployeeController {
         return ResponseHelper.badRequest('JSON inválido', details: e.toString());
       }
       
-      // Validar dados usando ValidationService
-      final validation = ValidationService.validateEmployeeCreation(json);
-      if (!validation.isValid) {
-        return ResponseHelper.validationError(validation.error!, details: validation.details);
-      }
-      
-      // Criar Employee
-      Employee employee;
-      try {
-        employee = Employee.fromJson(json);
-      } catch (e) {
-        return ResponseHelper.badRequest('Dados de funcionário inválidos', details: e.toString());
-      }
-      
-      // Verificar se já existe
-      final existing = await _firebaseService.getEmployeeById(employee.id);
-      if (existing != null) {
-        return ResponseHelper.employeeAlreadyExists(employee.id);
-      }
-      
-      // Criar no Firebase
-      final created = await _firebaseService.createEmployee(employee);
+      // ✅ MUDANÇA: EmployeeService já faz todas as validações
+      final created = await _employeeService.createEmployee(json);
       
       _logger.info('✅ Funcionário criado: ${created.nome}');
       return ResponseHelper.employeeCreated(created.toJson());
     } catch (e) {
+      _logger.severe('❌ Erro ao criar funcionário: $e');
+      
+      // ✅ MELHORIA: Tratamento específico de exceções de negócio
+      final errorMessage = e.toString();
+      
+      if (errorMessage.contains('InvalidEmployeeDataException')) {
+        return ResponseHelper.badRequest(errorMessage.replaceAll('InvalidEmployeeDataException: ', ''));
+      }
+      
+      if (errorMessage.contains('DuplicateEmployeeException')) {
+        return ResponseHelper.conflict(errorMessage.replaceAll('DuplicateEmployeeException: ', ''));
+      }
+      
+      if (errorMessage.contains('BusinessRuleException')) {
+        return ResponseHelper.validationError(errorMessage.replaceAll('BusinessRuleException: ', ''));
+      }
+      
       return ResponseHelper.internalError(details: e.toString());
     }
   }
@@ -103,18 +102,6 @@ class EmployeeController {
   Future<Response> updateEmployee(Request request, String id) async {
     try {
       _logger.info('🔄 PUT /api/employees/$id - Atualizando funcionário');
-      
-      // Validar ID
-      final idValidation = ValidationService.validateEmployeeId(id);
-      if (!idValidation.isValid) {
-        return ResponseHelper.badRequest(idValidation.error!, details: idValidation.details);
-      }
-      
-      // Verificar se existe
-      final existing = await _firebaseService.getEmployeeById(id);
-      if (existing == null) {
-        return ResponseHelper.employeeNotFound(id);
-      }
       
       // Ler e validar JSON
       final body = await request.readAsString();
@@ -129,40 +116,33 @@ class EmployeeController {
         return ResponseHelper.badRequest('JSON inválido', details: e.toString());
       }
       
-      // Validar dados de atualização
-      final validation = ValidationService.validateEmployeeUpdate(json);
-      if (!validation.isValid) {
-        return ResponseHelper.validationError(validation.error!, details: validation.details);
-      }
-      
-      // Aplicar atualizações
-      try {
-        if (json.containsKey('email')) {
-          existing.atualizarEmail(json['email'].toString());
-        }
-        
-        if (json.containsKey('setor')) {
-          final novoSetor = Setor.fromString(json['setor'].toString());
-          existing.transferirSetor(novoSetor, motivo: 'atualização via API');
-        }
-        
-        if (json.containsKey('ativo')) {
-          if (json['ativo'] == true) {
-            existing.ativar();
-          } else {
-            existing.desativar(motivo: 'desativação via API');
-          }
-        }
-      } catch (e) {
-        return ResponseHelper.badRequest('Erro ao aplicar atualizações', details: e.toString());
-      }
-      
-      // Salvar no Firebase
-      final updated = await _firebaseService.updateEmployee(existing);
+      // ✅ MUDANÇA: EmployeeService já faz todas as validações e regras de negócio
+      final updated = await _employeeService.updateEmployee(id, json);
       
       _logger.info('✅ Funcionário atualizado: ${updated.nome}');
       return ResponseHelper.employeeUpdated(updated.toJson());
     } catch (e) {
+      _logger.severe('❌ Erro ao atualizar funcionário $id: $e');
+      
+      // ✅ MELHORIA: Tratamento específico de exceções
+      final errorMessage = e.toString();
+      
+      if (errorMessage.contains('EmployeeNotFoundException')) {
+        return ResponseHelper.employeeNotFound(id);
+      }
+      
+      if (errorMessage.contains('InvalidEmployeeDataException')) {
+        return ResponseHelper.badRequest(errorMessage.replaceAll('InvalidEmployeeDataException: ', ''));
+      }
+      
+      if (errorMessage.contains('DuplicateEmployeeException')) {
+        return ResponseHelper.conflict(errorMessage.replaceAll('DuplicateEmployeeException: ', ''));
+      }
+      
+      if (errorMessage.contains('BusinessRuleException')) {
+        return ResponseHelper.validationError(errorMessage.replaceAll('BusinessRuleException: ', ''));
+      }
+      
       return ResponseHelper.internalError(details: e.toString());
     }
   }
@@ -172,20 +152,8 @@ class EmployeeController {
     try {
       _logger.info('🗑️ DELETE /api/employees/$id - Removendo funcionário');
       
-      // Validar ID
-      final idValidation = ValidationService.validateEmployeeId(id);
-      if (!idValidation.isValid) {
-        return ResponseHelper.badRequest(idValidation.error!, details: idValidation.details);
-      }
-      
-      // Verificar se existe
-      final existing = await _firebaseService.getEmployeeById(id);
-      if (existing == null) {
-        return ResponseHelper.employeeNotFound(id);
-      }
-      
-      // Deletar do Firebase
-      final deleted = await _firebaseService.deleteEmployee(id);
+      // ✅ MUDANÇA: EmployeeService já faz todas as validações
+      final deleted = await _employeeService.deleteEmployee(id);
       
       if (deleted) {
         _logger.info('✅ Funcionário removido: $id');
@@ -194,7 +162,80 @@ class EmployeeController {
         return ResponseHelper.internalError(details: 'Falha ao remover funcionário');
       }
     } catch (e) {
+      _logger.severe('❌ Erro ao deletar funcionário $id: $e');
+      
+      // ✅ MELHORIA: Tratamento específico de exceções
+      final errorMessage = e.toString();
+      
+      if (errorMessage.contains('EmployeeNotFoundException')) {
+        return ResponseHelper.employeeNotFound(id);
+      }
+      
+      if (errorMessage.contains('InvalidEmployeeDataException')) {
+        return ResponseHelper.badRequest(errorMessage.replaceAll('InvalidEmployeeDataException: ', ''));
+      }
+      
+      if (errorMessage.contains('BusinessRuleException')) {
+        return ResponseHelper.validationError(errorMessage.replaceAll('BusinessRuleException: ', ''));
+      }
+      
       return ResponseHelper.internalError(details: e.toString());
     }
   }
+  
+  // 📊 GET /api/employees/stats - Estatísticas (novo endpoint)
+  Future<Response> getEmployeeStats(Request request) async {
+    try {
+      _logger.info('📊 GET /api/employees/stats - Estatísticas de funcionários');
+      
+      final stats = await _employeeService.getStatistics();
+      
+      _logger.info('✅ Estatísticas calculadas');
+      return ResponseHelper.success(data: stats, message: 'Estatísticas calculadas com sucesso');
+    } catch (e) {
+      _logger.severe('❌ Erro ao calcular estatísticas: $e');
+      return ResponseHelper.internalError(details: e.toString());
+    }
+  }
+  
+  // 🧹 CLEANUP - Limpeza de recursos
+  void dispose() {
+    _employeeService.dispose();
+    _logger.info('🧹 EmployeeController disposed');
+  }
 }
+
+/*
+🎓 MELHORIAS IMPLEMENTADAS:
+
+1. ✅ **Nova Arquitetura**
+   - Usa EmployeeService em vez de FirebaseService
+   - Service Layer gerencia todas as regras de negócio
+   - Controller só coordena e trata respostas HTTP
+
+2. ✅ **Error Handling Aprimorado**
+   - Tratamento específico para cada tipo de exceção
+   - Mensagens de erro mais claras
+   - Status codes HTTP corretos
+
+3. ✅ **Menos Código Duplicado**
+   - Service já faz validações
+   - Controller mais limpo e focado
+   - Reutilização de lógica
+
+4. ✅ **Endpoint de Estatísticas**
+   - Novo endpoint para métricas
+   - Integração com regras de negócio
+   - Útil para dashboards
+
+5. ✅ **Resource Management**
+   - Dispose pattern implementado
+   - Cleanup de recursos
+   - Gestão de ciclo de vida
+
+6. ✅ **Separation of Concerns**
+   - Controller: HTTP requests/responses
+   - Service: Business logic
+   - Repository: Data persistence
+   - Mapper: Data conversion
+*/
