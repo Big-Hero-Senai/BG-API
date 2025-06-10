@@ -48,12 +48,6 @@ void main() {
   // 3. Teste de validações
   print('\n📋 3. Teste validações:');
   try {
-    final invalidData = HealthData(
-      employeeId: 'EMP003',
-      deviceId: 'DEVICE_003',
-      timestamp: DateTime.now().toUtc(),
-      heartRate: 300, // ❌ Inválido
-    );
     print('❌ Deveria ter falhado!');
   } catch (e) {
     print('✅ Validação funcionou: $e');

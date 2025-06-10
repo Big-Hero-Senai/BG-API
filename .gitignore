@@ -1,10 +1,46 @@
-# Build outputs
-/build/
-/.dart_tool/
+# 📁 SENAI Monitoring API - GitIgnore Completo
+# Projeto: IoT Monitoring System V2.0
 
-# Pub packages
+# ===================================
+# 🗑️ ARQUIVOS DE BACKUP E TEMPORÁRIOS
+# ===================================
+
+# Backups automáticos e manuais
+*.backup
+*.bak
+*.old
+backup_*/
+*_backup/
+backup.*
+
+# Arquivos temporários do sistema
+*~
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Logs de desenvolvimento
+*.log
+logs/
+log/
+
+# ===================================
+# 🐳 DART & FLUTTER ESPECÍFICOS
+# ===================================
+
+# Dart VM
+.dart_tool/
+
+# Packages
 .packages
+.package_config.json
 pubspec.lock
+
+# Build outputs
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # IDE files
 .vscode/
@@ -13,46 +49,196 @@ pubspec.lock
 *.ipr
 *.iws
 
-# 🔒 ARQUIVOS SENSÍVEIS - NUNCA VERSIONAR!
-.env
-config/firebase-service-account.json
-*.key
-*.pem
-secrets/
+# ===================================
+# 🔐 ARQUIVOS SENSÍVEIS
+# ===================================
 
-# Environment variables
+# Variáveis de ambiente
+.env
 .env.local
+.env.development
 .env.production
 .env.staging
 
-# OS files
-.DS_Store
-Thumbs.db
+# Chaves e certificados
+*.key
+*.pem
+*.p12
+*.jks
+credentials.json
+service-account-*.json
 
-# Logs
-*.log
-logs/
+# Configurações locais
+config/local/
+local_config.*
 
-# Coverage
+# ===================================
+# 🧪 ARQUIVOS DE TESTE E DEBUG
+# ===================================
+
+# Coverage reports
 coverage/
+.coverage
+lcov.info
 
-# Temporary files
-*.tmp
-*.temp
+# Test outputs
+test_results/
+test_reports/
 
-# Dart compiled files
-*.dart.js
-*.js_
-*.js.deps
-*.js.map
+# Debug files
+debug/
+*.debug
 
-# Database
-*.db
-*.sqlite
+# ===================================
+# 📊 DADOS E CACHE
+# ===================================
+
+# Cache de desenvolvimento
+.cache/
+cache/
+
+# Dados temporários
+data/temp/
+temp_data/
+
+# Downloads temporários
+downloads/
+temp_downloads/
+
+# ===================================
+# 🚀 DEPLOY E CI/CD
+# ===================================
 
 # Docker
-.dockerignore
-Dockerfile.local
+.dockerignore.backup
+docker-compose.override.yml
 
-#backup
-lib/src/routes/api_routes.dart.backup
+# Build artifacts
+dist/
+release/
+
+# Deploy configs
+deploy/local/
+.deploy_config
+
+# ===================================
+# 📝 DOCUMENTAÇÃO TEMPORÁRIA
+# ===================================
+
+# Documentação gerada
+docs/generated/
+api_docs/temp/
+
+# Backups de documentação
+README.md.backup
+*.md.backup
+
+# ===================================
+# 🔧 FERRAMENTAS DE DESENVOLVIMENTO
+# ===================================
+
+# Node.js (se usado para tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (se usado para scripts)
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# ===================================
+# 📱 MOBILE ESPECÍFICOS (FUTURO)
+# ===================================
+
+# Android
+android/app/debug
+android/app/profile
+android/app/release
+
+# iOS
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# ===================================
+# ☁️ CLOUD E DATABASE
+# ===================================
+
+# Firebase local
+.firebase/
+firebase-debug.log
+ui-debug.log
+
+# Database dumps
+*.sql
+*.db
+*.sqlite
+database_backups/
+
+# ===================================
+# 🎯 PROJETO ESPECÍFICO
+# ===================================
+
+# Arquivos específicos do SENAI Monitoring
+test_data/
+migration_backups/
+old_versions/
+deprecated/
+
+# Scripts de desenvolvimento local
+local_scripts/
+dev_tools/
+
+# Configurações de ambiente específicas
+config/environments/local.*
+
+# ===================================
+# 📦 PACKAGES E DEPENDÊNCIAS
+# ===================================
+
+# Dart packages
+.pub-cache/
+.packages
+
+# Local packages
+packages/*/
+
+# ===================================
+# 🔍 ANÁLISE E MÉTRICAS
+# ===================================
+
+# Code analysis
+.dartanalyzer
+analysis_options.yaml.backup
+
+# Performance reports
+performance_reports/
+benchmark_results/
+
+# ===================================
+# 🎨 ASSETS TEMPORÁRIOS
+# ===================================
+
+# Imagens temporárias
+*.tmp.png
+*.tmp.jpg
+temp_assets/
+
+# ===================================
+# COMENTÁRIOS PARA DESENVOLVEDORES
+# ===================================
+
+# 💡 DICAS:
+# - Mantenha este arquivo atualizado conforme o projeto evolui
+# - Revise periodicamente para adicionar novos padrões
+# - Use 'git check-ignore <arquivo>' para testar padrões
+# - Para limpar arquivos já commitados: 'git rm --cached <arquivo>'
+
+# 🚀 PARA DESENVOLVIMENTO:
+# - Use 'git status --ignored' para ver arquivos ignorados
+# - Crie .gitignore_local para ignores específicos da máquina
+# - Evite fazer commit de dados sensíveis ou temporários

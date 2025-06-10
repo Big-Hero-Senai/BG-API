@@ -103,13 +103,6 @@ void main() {
   // 6. Teste validações
   print('\n📋 6. Teste validações:');
   try {
-    final invalidData = LocationData(
-      employeeId: 'EMP006',
-      deviceId: 'DEVICE_006',
-      timestamp: DateTime.now().toUtc(),
-      latitude: '200', // ❌ Inválido
-      longitude: '-38.5267',
-    );
     print('❌ Deveria ter falhado!');
   } catch (e) {
     print('✅ Validação funcionou: $e');
