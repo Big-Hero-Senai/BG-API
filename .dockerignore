@@ -1,0 +1,97 @@
+# 🐳 .dockerignore - SENAI Monitoring API V2.1.0
+# Arquivos e diretórios ignorados no build Docker
+
+# ===========================================
+# 📁 DIRETÓRIOS DE BUILD E CACHE
+# ===========================================
+.dart_tool/
+build/
+.packages
+.pub-cache/
+.pub/
+
+# ===========================================
+# 🔧 ARQUIVOS DE DESENVOLVIMENTO
+# ===========================================
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Dart analysis
+.analysis_options.yaml
+analysis_options.yaml
+
+# ===========================================
+# 📋 ARQUIVOS DE DOCUMENTAÇÃO
+# ===========================================
+README.md
+CHANGELOG.md
+docs/
+*.md
+
+# ===========================================
+# 🧪 ARQUIVOS DE TESTE
+# ===========================================
+test/
+**/*_test.dart
+bin/test_*.dart
+bin/cleanup_*.dart
+
+# ===========================================
+# 🔒 ARQUIVOS SENSÍVEIS
+# ===========================================
+.env
+.env.local
+.env.production
+*.key
+*.pem
+*.p12
+service-account-key.json
+
+# ===========================================
+# 📊 LOGS E TEMPORÁRIOS
+# ===========================================
+*.log
+logs/
+tmp/
+temp/
+
+# ===========================================
+# 🌐 GIT E CONTROLE DE VERSÃO
+# ===========================================
+.git/
+.gitignore
+.gitattributes
+
+# ===========================================
+# 🚁 ARQUIVOS FLY.IO (já estão no contexto)
+# ===========================================
+# fly.toml - MANTER para configuração
+# Dockerfile - MANTER para build
+
+# ===========================================
+# 📦 OUTROS ARQUIVOS DESNECESSÁRIOS
+# ===========================================
+node_modules/
+*.tar.gz
+*.zip
+
+# ===========================================
+# 🎯 ARQUIVOS ESPECÍFICOS DO PROJETO
+# ===========================================
+# Backups
+backup_*.md
+backup_*.txt
+
+# Screenshots e imagens de desenvolvimento
+screenshots/
+*.png
+*.jpg
+*.gif
+
+# Exemplos e templates
+examples/
+templates/

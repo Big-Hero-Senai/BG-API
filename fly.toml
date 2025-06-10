@@ -1,0 +1,58 @@
+# fly.toml app configuration file generated for senai-monitoring-api on 2025-06-10T11:47:53-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'senai-monitoring-api'
+primary_region = 'gru'
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
+
+[experimental]
+  auto_rollback = true
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[deploy]
+  strategy = 'rolling'
+
+[env]
+  API_NAME = 'SENAI Monitoring API V2.1.0'
+  API_VERSION = '2.1.0'
+  CORS_ORIGINS = 'https://big-hero-senai.github.io/BG-Website/'
+  DASHBOARD_CACHE_TTL = '300'
+  DASHBOARD_REALTIME = 'true'
+  IOT_HIERARCHICAL_STRUCTURE = 'true'
+  IOT_INTELLIGENT_PROCESSING = 'true'
+  IOT_SELECTIVE_HISTORY = 'true'
+  IOT_ZONE_DETECTION = 'true'
+  LOG_LEVEL = 'INFO'
+  LOG_PERFORMANCE = 'true'
+  NODE_ENV = 'production'
+  PERFORMANCE_MONITORING = 'true'
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8080
+  processes = ['app']
+
+  [[services.ports]]
+    port = 80
+    handlers = ['http']
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ['http', 'tls']
+
+  [[services.http_checks]]
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[metrics]]
+  port = 8080
+  path = '/api/stats'

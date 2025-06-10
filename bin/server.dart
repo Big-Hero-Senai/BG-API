@@ -59,13 +59,14 @@ void main() async {
       .addHandler(router.call);                       // 4️⃣ Processar rotas
 
   // 🌐 INICIAR SERVIDOR
-  final port = int.parse(env['PORT'] ?? '8080');
-  final host = env['HOST'] ?? 'localhost';
+  // 🔧 CORREÇÃO CRÍTICA PARA FLY.IO:
+  final port = int.parse(env['PORT'] ?? Platform.environment['PORT'] ?? '8080');
+  final host = env['HOST'] ?? Platform.environment['HOST'] ?? '0.0.0.0';  // ✅ MUDANÇA AQUI: localhost → 0.0.0.0
   
   await shelf_io.serve(pipeline, host, port);  // ✅ Removido variável não usada
   
   _logger.info('🌐 Servidor rodando em http://$host:$port');
-  _logger.info('🔧 Ambiente: ${env['NODE_ENV'] ?? 'development'}');
+  _logger.info('🔧 Ambiente: ${env['NODE_ENV'] ?? Platform.environment['NODE_ENV'] ?? 'development'}');
   _logger.info('📋 Endpoints disponíveis:');
   _logger.info('   🏠 GET  /                    - Documentação');
   _logger.info('   📊 GET  /api                 - Info da API');
@@ -77,11 +78,18 @@ void main() async {
   _logger.info('   🗑️ DELETE /api/employees/:id - Deletar funcionário');
   
   print('');
-  print('🎯 ${env['API_NAME'] ?? 'SENAI Monitoring API'} v${env['API_VERSION'] ?? '1.0.0'}');
+  print('🎯 ${env['API_NAME'] ?? 'SENAI Monitoring API'} v${env['API_VERSION'] ?? '2.1.0'}');
   print('📍 http://$host:$port');
   print('📖 Documentação: http://$host:$port');
   print('🧪 Health Check: http://$host:$port/health');
   print('👥 Funcionários: http://$host:$port/api/employees');
+  
+  // 🚁 LOG ESPECÍFICO PARA FLY.IO
+  if (Platform.environment['NODE_ENV'] == 'production') {
+    print('🚁 Fly.io Deploy: https://senai-monitoring-api.fly.dev');
+    print('🔍 Health Check: https://senai-monitoring-api.fly.dev/health');
+  }
+  
   print('💡 Pressione Ctrl+C para parar');
   print('');
   

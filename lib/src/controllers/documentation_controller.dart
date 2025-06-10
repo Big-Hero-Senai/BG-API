@@ -9,7 +9,7 @@ class DocumentationController {
   
   // Configurações da API
   static const String _apiName = 'SENAI Monitoring API';
-  static const String _version = '1.0.0';
+  static const String _version = '2.1.0';
   static const String _description = 'Sistema de Monitoramento de Funcionários com Pulseiras IoT';
   
   // 🏠 GET / - Documentação HTML interativa
