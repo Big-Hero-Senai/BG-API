@@ -1,6 +1,6 @@
 name: senai_monitoring_api
-description: API para monitoramento de funcionários SENAI com pulseiras IoT
-version: 1.0.0
+description: IoT Monitoring System for SENAI - V2.0 Hierarchical Architecture
+version: 2.0.0
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
