@@ -4,7 +4,7 @@ import '../lib/src/models/health_data.dart';
 
 void main() {
   print('🧪 Testando HealthData Model...\n');
-  
+
   // 1. Teste de criação básica
   print('📋 1. Teste básico:');
   try {
@@ -16,14 +16,14 @@ void main() {
       bodyTemperature: 36.5,
       batteryLevel: 85,
     );
-    
+
     print('✅ HealthData criado: ${healthData}');
     print('   Status: ${healthData.overallStatus.displayName}');
     print('   Crítico: ${healthData.isCriticalAlert}');
   } catch (e) {
     print('❌ Erro: $e');
   }
-  
+
   // 2. Teste JSON
   print('\n📋 2. Teste JSON:');
   try {
@@ -35,7 +35,7 @@ void main() {
       'body_temperature': 38.2,
       'oxygen_saturation': 92,
     };
-    
+
     final healthData = HealthData.fromJson(json);
     print('✅ Criado do JSON: ${healthData}');
     print('   Febre detectada: ${healthData.isFeverDetected}');
@@ -44,7 +44,7 @@ void main() {
   } catch (e) {
     print('❌ Erro JSON: $e');
   }
-  
+
   // 3. Teste de validações
   print('\n📋 3. Teste validações:');
   try {
@@ -52,6 +52,6 @@ void main() {
   } catch (e) {
     print('✅ Validação funcionou: $e');
   }
-  
+
   print('\n🎉 Testes do HealthData concluídos!');
 }

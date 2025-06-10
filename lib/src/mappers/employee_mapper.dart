@@ -2,7 +2,6 @@ import '../models/employee.dart';
 
 // 🔄 MAPPER: Conversões Employee ↔ Firebase Format
 class EmployeeMapper {
-  
   // 📤 CONVERTER: Employee → Firebase Format
   static Map<String, dynamic> toFirebaseFormat(Employee employee) {
     return {
@@ -11,19 +10,25 @@ class EmployeeMapper {
         'nome': {'stringValue': employee.nome},
         'email': {'stringValue': employee.email},
         'setor': {'stringValue': employee.setor.name},
-        'data_admissao': {'timestampValue': employee.dataAdmissao.toUtc().toIso8601String()},
+        'data_admissao': {
+          'timestampValue': employee.dataAdmissao.toUtc().toIso8601String()
+        },
         'ativo': {'booleanValue': employee.ativo},
-        'created_at': {'timestampValue': DateTime.now().toUtc().toIso8601String()},
-        'updated_at': {'timestampValue': DateTime.now().toUtc().toIso8601String()},
+        'created_at': {
+          'timestampValue': DateTime.now().toUtc().toIso8601String()
+        },
+        'updated_at': {
+          'timestampValue': DateTime.now().toUtc().toIso8601String()
+        },
       }
     };
   }
-  
+
   // 📥 CONVERTER: Firebase Format → Employee
   static Employee fromFirebaseFormat(Map<String, dynamic> firebaseDoc) {
     try {
       final fields = firebaseDoc['fields'] as Map<String, dynamic>;
-      
+
       // Extrair valores dos campos Firebase
       final employeeData = {
         'id': fields['id']?['stringValue'] ?? '',
@@ -33,23 +38,24 @@ class EmployeeMapper {
         'data_admissao': fields['data_admissao']?['timestampValue'] ?? '',
         'ativo': fields['ativo']?['booleanValue'] ?? true,
       };
-      
+
       // Usar o fromJson do Employee (que já tem validações)
       return Employee.fromJson(employeeData);
     } catch (e) {
-      throw FormatException('Erro ao converter documento Firebase para Employee: $e');
+      throw FormatException(
+          'Erro ao converter documento Firebase para Employee: $e');
     }
   }
-  
+
   // 📋 CONVERTER: Employee → JSON Simples (para outras APIs)
   static Map<String, dynamic> toSimpleJson(Employee employee) {
     return employee.toJson();
   }
-  
+
   // 📋 CONVERTER: Lista Firebase → Lista Employee
   static List<Employee> fromFirebaseList(List<dynamic> firebaseDocs) {
     final employees = <Employee>[];
-    
+
     for (final doc in firebaseDocs) {
       try {
         final employee = fromFirebaseFormat(doc as Map<String, dynamic>);
@@ -60,48 +66,48 @@ class EmployeeMapper {
         continue;
       }
     }
-    
+
     return employees;
   }
-  
+
   // 📋 CONVERTER: Lista Employee → Lista JSON
   static List<Map<String, dynamic>> toJsonList(List<Employee> employees) {
     return employees.map((e) => e.toJson()).toList();
   }
-  
+
   // 🔍 EXTRAIR: Document ID de URL Firebase
   static String? extractDocumentId(String? documentPath) {
     if (documentPath == null || documentPath.isEmpty) return null;
-    
+
     // Firebase document path: "projects/.../documents/employees/EMP001"
     final parts = documentPath.split('/');
     return parts.isNotEmpty ? parts.last : null;
   }
-  
+
   // 📊 HELPER: Verificar se documento Firebase é válido
   static bool isValidFirebaseDocument(Map<String, dynamic> doc) {
     if (!doc.containsKey('fields')) return false;
-    
+
     final fields = doc['fields'] as Map<String, dynamic>?;
     if (fields == null) return false;
-    
+
     // Verificar campos obrigatórios
     final requiredFields = ['id', 'nome', 'email', 'setor'];
     for (final field in requiredFields) {
       if (!fields.containsKey(field)) return false;
     }
-    
+
     return true;
   }
-  
+
   // 🛠️ HELPER: Limpar dados antes da conversão
   static Map<String, dynamic> sanitizeFirebaseData(Map<String, dynamic> data) {
     final sanitized = <String, dynamic>{};
-    
+
     for (final entry in data.entries) {
       final key = entry.key.trim();
       final value = entry.value;
-      
+
       if (key.isNotEmpty && value != null) {
         // Remover campos de metadados Firebase se existirem
         if (!key.startsWith('_') && !key.contains('metadata')) {
@@ -109,41 +115,7 @@ class EmployeeMapper {
         }
       }
     }
-    
+
     return sanitized;
   }
 }
-
-/*
-🎓 CONCEITOS DO MAPPER PATTERN:
-
-1. 🔄 **Single Responsibility**
-   - Só faz conversões de formato
-   - Não tem lógica de negócio
-   - Não faz operações HTTP
-
-2. 🛡️ **Type Safety**
-   - Usa tipos específicos (Employee)
-   - Validações centralizadas
-   - Error handling robusto
-
-3. 🔄 **Bidirectional Mapping**
-   - Employee → Firebase
-   - Firebase → Employee
-   - Reutilizável em ambas direções
-
-4. 🧪 **Testability**
-   - Funções puras (input → output)
-   - Sem side effects
-   - Fácil de testar unitariamente
-
-5. 🔧 **Utility Functions**
-   - Helpers para casos específicos
-   - Validações de formato
-   - Sanitização de dados
-
-6. 📊 **Performance**
-   - Processamento em lotes
-   - Falha em um não para todos
-   - Otimizado para collections
-*/

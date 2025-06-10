@@ -8,12 +8,12 @@ import '../models/employee.dart';
 // 🔥 SERVICE: Comunicação com Firebase Firestore
 class FirebaseService {
   static final _logger = Logger('FirebaseService');
-  
+
   // 🔧 CONFIGURAÇÃO SEGURA - Via variáveis de ambiente
-  static String? _projectId;  // ✅ Nullable em vez de late
+  static String? _projectId; // ✅ Nullable em vez de late
   static String? _baseUrl;
   static const String collection = 'employees';
-  
+
   // 📖 CONCEITO: Getters com inicialização lazy
   static String get projectId {
     if (_projectId == null) {
@@ -21,43 +21,44 @@ class FirebaseService {
     }
     return _projectId!;
   }
-  
+
   static String get baseUrl {
     if (_baseUrl == null) {
       _initializeConfig();
     }
     return _baseUrl!;
   }
-  
+
   // 📖 CONCEITO: Inicialização segura (só uma vez)
   static void _initializeConfig() {
     // Não inicializar se já foi inicializado
     if (_projectId != null && _baseUrl != null) {
       return;
     }
-    
+
     // Carregar variáveis de ambiente
     final env = DotEnv();
-    
+
     // Tentar carregar .env, se falhar usar variáveis do sistema
     try {
       env.load();
     } catch (e) {
-      _logger.warning('⚠️ Arquivo .env não encontrado, usando variáveis do sistema');
+      _logger.warning(
+          '⚠️ Arquivo .env não encontrado, usando variáveis do sistema');
     }
-    
+
     // Buscar Project ID (prioridade: .env -> variável sistema -> erro)
-    _projectId = env['FIREBASE_PROJECT_ID'] ?? 
-                Platform.environment['FIREBASE_PROJECT_ID'] ?? 
-                'senai-monitoring-api'; // fallback padrão
-    
+    _projectId = env['FIREBASE_PROJECT_ID'] ??
+        Platform.environment['FIREBASE_PROJECT_ID'] ??
+        'senai-monitoring-api'; // fallback padrão
+
     _baseUrl = 'https://firestore.googleapis.com/v1';
-    
+
     _logger.info('🔧 Configuração carregada:');
     _logger.info('   Project ID: $_projectId');
     _logger.info('   Base URL: $_baseUrl');
   }
-  
+
   // 📖 CONCEITO: Singleton Pattern (uma única instância)
   static final FirebaseService _instance = FirebaseService._internal();
   factory FirebaseService() {
@@ -68,20 +69,21 @@ class FirebaseService {
     return _instance;
   }
   FirebaseService._internal();
-  
+
   // 🌐 Cliente HTTP reutilizável
   final http.Client _client = http.Client();
-  
+
   // 🔗 URLs do Firestore REST API
-  String get _collectionUrl => '$baseUrl/projects/$projectId/databases/(default)/documents/$collection';
+  String get _collectionUrl =>
+      '$baseUrl/projects/$projectId/databases/(default)/documents/$collection';
   String _documentUrl(String id) => '$_collectionUrl/$id';
-  
+
   // 📋 Headers padrão
   Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-  
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
   // 📖 CONCEITO: Converter Employee para formato Firebase
   Map<String, dynamic> _employeeToFirebaseFormat(Employee employee) {
     return {
@@ -90,17 +92,21 @@ class FirebaseService {
         'nome': {'stringValue': employee.nome},
         'email': {'stringValue': employee.email},
         'setor': {'stringValue': employee.setor.name},
-        'data_admissao': {'timestampValue': employee.dataAdmissao.toUtc().toIso8601String()},
+        'data_admissao': {
+          'timestampValue': employee.dataAdmissao.toUtc().toIso8601String()
+        },
         'ativo': {'booleanValue': employee.ativo},
-        'created_at': {'timestampValue': DateTime.now().toUtc().toIso8601String()},
+        'created_at': {
+          'timestampValue': DateTime.now().toUtc().toIso8601String()
+        },
       }
     };
   }
-  
+
   // 📖 CONCEITO: Converter formato Firebase para Employee
   Employee _firebaseFormatToEmployee(Map<String, dynamic> doc) {
     final fields = doc['fields'] as Map<String, dynamic>;
-    
+
     return Employee.fromJson({
       'id': fields['id']?['stringValue'] ?? '',
       'nome': fields['nome']?['stringValue'] ?? '',
@@ -110,21 +116,21 @@ class FirebaseService {
       'ativo': fields['ativo']?['booleanValue'] ?? true,
     });
   }
-  
+
   // 🔍 LISTAR TODOS OS FUNCIONÁRIOS
   Future<List<Employee>> getAllEmployees() async {
     try {
       _logger.info('📋 Buscando todos os funcionários...');
-      
+
       final response = await _client.get(
         Uri.parse(_collectionUrl),
         headers: _headers,
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final List<Employee> employees = [];
-        
+
         if (data['documents'] != null) {
           for (final doc in data['documents']) {
             try {
@@ -135,7 +141,7 @@ class FirebaseService {
             }
           }
         }
-        
+
         _logger.info('✅ ${employees.length} funcionários encontrados');
         return employees;
       } else if (response.statusCode == 404) {
@@ -149,17 +155,17 @@ class FirebaseService {
       rethrow;
     }
   }
-  
+
   // 🔍 BUSCAR FUNCIONÁRIO POR ID
   Future<Employee?> getEmployeeById(String id) async {
     try {
       _logger.info('🔍 Buscando funcionário: $id');
-      
+
       final response = await _client.get(
         Uri.parse(_documentUrl(id)),
         headers: _headers,
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final employee = _firebaseFormatToEmployee(data);
@@ -176,26 +182,26 @@ class FirebaseService {
       rethrow;
     }
   }
-  
+
   // ➕ CRIAR NOVO FUNCIONÁRIO
   Future<Employee> createEmployee(Employee employee) async {
     try {
       _logger.info('➕ Criando funcionário: ${employee.nome}');
-      
+
       // Verificar se já existe
       final existing = await getEmployeeById(employee.id);
       if (existing != null) {
         throw Exception('Funcionário ${employee.id} já existe');
       }
-      
+
       final firebaseData = _employeeToFirebaseFormat(employee);
-      
+
       final response = await _client.patch(
         Uri.parse(_documentUrl(employee.id)),
         headers: _headers,
         body: jsonEncode(firebaseData),
       );
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         _logger.info('✅ Funcionário criado: ${employee.nome}');
         return employee;
@@ -207,20 +213,20 @@ class FirebaseService {
       rethrow;
     }
   }
-  
+
   // 🔄 ATUALIZAR FUNCIONÁRIO
   Future<Employee> updateEmployee(Employee employee) async {
     try {
       _logger.info('🔄 Atualizando funcionário: ${employee.nome}');
-      
+
       final firebaseData = _employeeToFirebaseFormat(employee);
-      
+
       final response = await _client.patch(
         Uri.parse(_documentUrl(employee.id)),
         headers: _headers,
         body: jsonEncode(firebaseData),
       );
-      
+
       if (response.statusCode == 200) {
         _logger.info('✅ Funcionário atualizado: ${employee.nome}');
         return employee;
@@ -232,17 +238,17 @@ class FirebaseService {
       rethrow;
     }
   }
-  
+
   // 🗑️ DELETAR FUNCIONÁRIO
   Future<bool> deleteEmployee(String id) async {
     try {
       _logger.info('🗑️ Deletando funcionário: $id');
-      
+
       final response = await _client.delete(
         Uri.parse(_documentUrl(id)),
         headers: _headers,
       );
-      
+
       if (response.statusCode == 200) {
         _logger.info('✅ Funcionário deletado: $id');
         return true;
@@ -257,32 +263,32 @@ class FirebaseService {
       rethrow;
     }
   }
-  
+
   // 🧪 TESTAR CONEXÃO
   Future<bool> testConnection() async {
     try {
       _logger.info('🧪 Testando conexão com Firebase...');
-      
+
       final response = await _client.get(
         Uri.parse(_collectionUrl),
         headers: _headers,
       );
-      
+
       final success = response.statusCode == 200 || response.statusCode == 404;
-      
+
       if (success) {
         _logger.info('✅ Conexão com Firebase OK!');
       } else {
         _logger.severe('❌ Falha na conexão: ${response.statusCode}');
       }
-      
+
       return success;
     } catch (e) {
       _logger.severe('❌ Erro de conexão: $e');
       return false;
     }
   }
-  
+
   // 🔧 Cleanup
   void dispose() {
     _client.close();

@@ -6,20 +6,21 @@ import '../services/template_service.dart';
 // 📄 CONTROLLER: Documentação da API
 class DocumentationController {
   static final _logger = Logger('DocumentationController');
-  
+
   // Configurações da API
   static const String _apiName = 'SENAI Monitoring API';
   static const String _version = '2.1.0';
-  static const String _description = 'Sistema de Monitoramento de Funcionários com Pulseiras IoT';
-  
+  static const String _description =
+      'Sistema de Monitoramento de Funcionários com Pulseiras IoT';
+
   // 🏠 GET / - Documentação HTML interativa
   static Future<Response> getDocumentation(Request request) async {
     try {
       _logger.info('📄 GET / - Servindo documentação HTML');
-      
+
       // Obter URL base da requisição
       final baseUrl = _getBaseUrl(request);
-      
+
       // Renderizar documentação usando templates
       final html = await TemplateService.renderDocumentation(
         apiName: _apiName,
@@ -27,9 +28,9 @@ class DocumentationController {
         description: _description,
         baseUrl: baseUrl,
       );
-      
+
       _logger.info('✅ Documentação HTML renderizada com sucesso');
-      
+
       return Response.ok(
         html,
         headers: {
@@ -39,7 +40,7 @@ class DocumentationController {
       );
     } catch (e) {
       _logger.severe('❌ Erro ao servir documentação: $e');
-      
+
       // Fallback simples se falhar
       return Response.ok(
         _getFallbackHtml(),
@@ -47,25 +48,25 @@ class DocumentationController {
       );
     }
   }
-  
+
   // 📊 GET /api - Informações da API em JSON
   static Response getApiInfo(Request request) {
     try {
       _logger.info('📊 GET /api - Servindo informações da API');
-      
+
       final apiInfo = TemplateService.getApiInfo(
         apiName: _apiName,
         version: _version,
         description: _description,
       );
-      
+
       return Response.ok(
         jsonEncode(apiInfo),
         headers: {'Content-Type': 'application/json; charset=utf-8'},
       );
     } catch (e) {
       _logger.severe('❌ Erro ao servir info da API: $e');
-      
+
       // Fallback básico
       final fallback = {
         'api': _apiName,
@@ -73,18 +74,18 @@ class DocumentationController {
         'error': 'Erro ao carregar informações completas',
         'timestamp': DateTime.now().toIso8601String(),
       };
-      
+
       return Response.ok(
         jsonEncode(fallback),
         headers: {'Content-Type': 'application/json'},
       );
     }
   }
-  
+
   // 🏥 GET /health - Health check
   static Response healthCheck(Request request) {
     _logger.info('🏥 GET /health - Health check solicitado');
-    
+
     final health = {
       'status': 'healthy',
       'service': _apiName,
@@ -94,28 +95,29 @@ class DocumentationController {
       'database': 'Firebase Firestore',
       'environment': 'development', // Pode vir de variável de ambiente
     };
-    
+
     return Response.ok(
       jsonEncode(health),
       headers: {'Content-Type': 'application/json'},
     );
   }
-  
+
   // 🔧 Helper: Extrair URL base da requisição
   static String _getBaseUrl(Request request) {
     final uri = request.requestedUri;
     final scheme = uri.scheme;
     final host = uri.host;
     final port = uri.port;
-    
+
     // Se for porta padrão, não incluir na URL
-    if ((scheme == 'http' && port == 80) || (scheme == 'https' && port == 443)) {
+    if ((scheme == 'http' && port == 80) ||
+        (scheme == 'https' && port == 443)) {
       return '$scheme://$host';
     } else {
       return '$scheme://$host:$port';
     }
   }
-  
+
   // 🚨 Fallback HTML se templates falharem
   static String _getFallbackHtml() {
     return '''
@@ -150,27 +152,3 @@ class DocumentationController {
     ''';
   }
 }
-
-/*
-🎓 BENEFÍCIOS DESTA SEPARAÇÃO:
-
-✅ **Controller Limpo:**
-- Só coordena e chama serviços
-- Não tem HTML hardcoded
-- Fácil de testar
-
-✅ **Templates Flexíveis:**
-- Designer pode editar HTML sem tocar Dart
-- Dados dinâmicos via variáveis
-- Componentes reutilizáveis
-
-✅ **Manutenibilidade:**
-- Mudanças visuais não afetam lógica
-- Fallbacks para resiliência
-- Cache para performance
-
-✅ **Profissionalismo:**
-- Separação clara de responsabilidades
-- Logs estruturados
-- Error handling robusto
-*/

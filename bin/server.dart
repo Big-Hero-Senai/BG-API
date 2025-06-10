@@ -17,7 +17,8 @@ void main() async {
     env.load();
     _logger.info('✅ Variáveis de ambiente carregadas');
   } catch (e) {
-    _logger.warning('⚠️ Arquivo .env não encontrado, usando variáveis do sistema');
+    _logger
+        .warning('⚠️ Arquivo .env não encontrado, usando variáveis do sistema');
   }
 
   // 📋 CONFIGURAR LOGS
@@ -32,12 +33,12 @@ void main() async {
   // 🔥 TESTAR CONEXÃO FIREBASE
   final firebaseService = FirebaseService();
   final connected = await firebaseService.testConnection();
-  
+
   if (!connected) {
     _logger.severe('❌ Falha na conexão com Firebase! Abortando...');
     exit(1); // Encerrar processo com erro
   }
-  
+
   _logger.info('✅ Firebase conectado com sucesso!');
 
   // 🗺️ CONFIGURAR ROTAS
@@ -46,27 +47,31 @@ void main() async {
 
   // 🌐 CONFIGURAÇÃO CORS SEGURA
   final corsOrigins = env['CORS_ORIGINS']?.split(',') ?? ['*'];
-  
+
   // 📖 CONCEITO: Middleware Pipeline Completo
   final pipeline = Pipeline()
-      .addMiddleware(logRequests())                    // 1️⃣ Log de todas requisições
-      .addMiddleware(corsHeaders(headers: {            // 2️⃣ CORS configurado
+      .addMiddleware(logRequests()) // 1️⃣ Log de todas requisições
+      .addMiddleware(corsHeaders(headers: {
+        // 2️⃣ CORS configurado
         'Access-Control-Allow-Origin': corsOrigins.join(','),
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       }))
-      .addMiddleware(_errorHandler)                    // 3️⃣ Tratamento de erros global
-      .addHandler(router.call);                       // 4️⃣ Processar rotas
+      .addMiddleware(_errorHandler) // 3️⃣ Tratamento de erros global
+      .addHandler(router.call); // 4️⃣ Processar rotas
 
   // 🌐 INICIAR SERVIDOR
   // 🔧 CORREÇÃO CRÍTICA PARA FLY.IO:
   final port = int.parse(env['PORT'] ?? Platform.environment['PORT'] ?? '8080');
-  final host = env['HOST'] ?? Platform.environment['HOST'] ?? '0.0.0.0';  // ✅ MUDANÇA AQUI: localhost → 0.0.0.0
-  
-  await shelf_io.serve(pipeline, host, port);  // ✅ Removido variável não usada
-  
+  final host = env['HOST'] ??
+      Platform.environment['HOST'] ??
+      '0.0.0.0'; // ✅ MUDANÇA AQUI: localhost → 0.0.0.0
+
+  await shelf_io.serve(pipeline, host, port); // ✅ Removido variável não usada
+
   _logger.info('🌐 Servidor rodando em http://$host:$port');
-  _logger.info('🔧 Ambiente: ${env['NODE_ENV'] ?? Platform.environment['NODE_ENV'] ?? 'development'}');
+  _logger.info(
+      '🔧 Ambiente: ${env['NODE_ENV'] ?? Platform.environment['NODE_ENV'] ?? 'development'}');
   _logger.info('📋 Endpoints disponíveis:');
   _logger.info('   🏠 GET  /                    - Documentação');
   _logger.info('   📊 GET  /api                 - Info da API');
@@ -76,40 +81,52 @@ void main() async {
   _logger.info('   ➕ POST /api/employees       - Criar funcionário');
   _logger.info('   🔄 PUT  /api/employees/:id   - Atualizar funcionário');
   _logger.info('   🗑️ DELETE /api/employees/:id - Deletar funcionário');
-  
+
   print('');
-  print('🎯 ${env['API_NAME'] ?? 'SENAI Monitoring API'} v${env['API_VERSION'] ?? '2.1.0'}');
+  print(
+      '🎯 ${env['API_NAME'] ?? 'SENAI Monitoring API'} v${env['API_VERSION'] ?? '2.1.0'}');
   print('📍 http://$host:$port');
   print('📖 Documentação: http://$host:$port');
   print('🧪 Health Check: http://$host:$port/health');
   print('👥 Funcionários: http://$host:$port/api/employees');
-  
+
   // 🚁 LOG ESPECÍFICO PARA FLY.IO
   if (Platform.environment['NODE_ENV'] == 'production') {
     print('🚁 Fly.io Deploy: https://senai-monitoring-api.fly.dev');
     print('🔍 Health Check: https://senai-monitoring-api.fly.dev/health');
   }
-  
+
   print('💡 Pressione Ctrl+C para parar');
   print('');
-  
+
   _logger.info('🎉 API iniciada com sucesso!');
 }
 
 // 🔧 Helper: Converter string para Level
 Level _getLogLevel(String level) {
   switch (level.toUpperCase()) {
-    case 'ALL': return Level.ALL;
-    case 'FINEST': return Level.FINEST;
-    case 'FINER': return Level.FINER;
-    case 'FINE': return Level.FINE;
-    case 'CONFIG': return Level.CONFIG;
-    case 'INFO': return Level.INFO;
-    case 'WARNING': return Level.WARNING;
-    case 'SEVERE': return Level.SEVERE;
-    case 'SHOUT': return Level.SHOUT;
-    case 'OFF': return Level.OFF;
-    default: return Level.INFO;
+    case 'ALL':
+      return Level.ALL;
+    case 'FINEST':
+      return Level.FINEST;
+    case 'FINER':
+      return Level.FINER;
+    case 'FINE':
+      return Level.FINE;
+    case 'CONFIG':
+      return Level.CONFIG;
+    case 'INFO':
+      return Level.INFO;
+    case 'WARNING':
+      return Level.WARNING;
+    case 'SEVERE':
+      return Level.SEVERE;
+    case 'SHOUT':
+      return Level.SHOUT;
+    case 'OFF':
+      return Level.OFF;
+    default:
+      return Level.INFO;
   }
 }
 
@@ -121,13 +138,13 @@ Middleware _errorHandler = (Handler innerHandler) {
     } catch (error, stackTrace) {
       _logger.severe('❌ Erro não tratado: $error');
       _logger.severe('📋 Stack trace: $stackTrace');
-      
+
       final errorResponse = {
         'error': true,
         'message': 'Erro interno do servidor',
         'timestamp': DateTime.now().toIso8601String(),
       };
-      
+
       return Response.internalServerError(
         body: '${errorResponse}',
         headers: {'Content-Type': 'application/json'},
