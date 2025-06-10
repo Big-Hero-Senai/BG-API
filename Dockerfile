@@ -52,6 +52,9 @@ WORKDIR /app
 # Copiar executável compilado do stage de build
 COPY --from=build /app/bin/server /app/server
 
+# 📁 Copiar templates para runtime (CORREÇÃO!)
+COPY --from=build /app/templates/ /app/templates/
+
 # Copiar arquivos necessários em runtime (se houver)
 COPY --from=build /app/.env.example /app/.env.example
 

@@ -628,21 +628,21 @@
             
             <h3>📡 Como Testar Endpoints IoT V2.1.0:</h3>
             <div class="code"># Enviar dados de saúde
-curl -X POST http://localhost:8080/api/iot/health \
+curl -X POST {{BASE_URL}}/api/iot/health \
   -H "Content-Type: application/json" \
   -d '{"device_id":"DEVICE_001","employee_id":"EMP001","heart_rate":75,"body_temperature":36.5,"battery_level":85}'
 
 # Consultar dados hierárquicos (90% mais rápido)
-curl -X GET http://localhost:8080/api/iot/health/EMP001
+curl -X GET {{BASE_URL}}/api/iot/health/EMP001
 
 # Dashboard tempo real (95% mais eficiente)  
-curl -X GET http://localhost:8080/api/iot/locations-all
+curl -X GET {{BASE_URL}}/api/iot/locations-all
 
 # Estatísticas com zone detection
-curl -X GET http://localhost:8080/api/iot/stats
+curl -X GET {{BASE_URL}}/api/iot/stats
 
 # Funcionários
-curl -X GET http://localhost:8080/api/employees</div>
+curl -X GET {{BASE_URL}}/api/employees</div>
         </div>
         
         <!-- FOOTER -->
