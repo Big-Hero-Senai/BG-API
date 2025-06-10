@@ -1,16 +1,17 @@
-// 📁 lib/src/services/iot_service_v2.dart
+// 📁 lib/src/services/iot_service.dart
+// 🔧 CORRIGIDO: Imports e classe renomeada
 
 import 'package:logging/logging.dart';
 import '../models/health_data.dart';
 import '../models/location_data.dart';
-import '../repositories/iot_repository.dart';
+import '../repositories/iot_repository_v2.dart'; // 🔧 CORRIGIDO: import correto
 import '../services/employee_service.dart';
 
 // 🧠 SERVICE V2: Lógica inteligente com estrutura hierárquica otimizada
 class IoTServiceV2 {
   static final _logger = Logger('IoTServiceV2');
   
-  final IoTRepositoryV2 _iotRepository = IoTRepositoryV2();
+  final IoTRepositoryV2 _iotRepository = IoTRepositoryV2(); // 🔧 CORRIGIDO: classe correta
   final EmployeeService _employeeService = EmployeeService();
   
   // 💓 PROCESSAR DADOS DE SAÚDE - ESTRUTURA OTIMIZADA
@@ -193,7 +194,7 @@ class IoTServiceV2 {
       return await _iotRepository.getHealthDataByEmployee(employeeId, limit: limit);
     } catch (e) {
       _logger.severe('❌ Erro ao buscar dados de saúde V2: $e');
-      rethrow;
+      return [];
     }
   }
   
@@ -203,7 +204,7 @@ class IoTServiceV2 {
       return await _iotRepository.getCurrentLocation(employeeId);
     } catch (e) {
       _logger.severe('❌ Erro ao buscar localização atual V2: $e');
-      rethrow;
+      return null;
     }
   }
   
@@ -214,7 +215,7 @@ class IoTServiceV2 {
       return locationsMap.values.toList();
     } catch (e) {
       _logger.severe('❌ Erro ao buscar todas localizações V2: $e');
-      rethrow;
+      return [];
     }
   }
   
@@ -224,7 +225,7 @@ class IoTServiceV2 {
       return await _iotRepository.getLocationHistory(employeeId, limit: limit);
     } catch (e) {
       _logger.severe('❌ Erro ao buscar histórico de localização V2: $e');
-      rethrow;
+      return [];
     }
   }
   
@@ -258,7 +259,7 @@ class IoTServiceV2 {
       return stats;
     } catch (e) {
       _logger.severe('❌ Erro ao gerar estatísticas V2: $e');
-      rethrow;
+      return {'error': e.toString()};
     }
   }
   
@@ -297,7 +298,12 @@ class IoTServiceV2 {
       };
     } catch (e) {
       _logger.severe('❌ Erro no teste de performance V2: $e');
-      rethrow;
+      return {
+        'error': e.toString(),
+        'employee_id': employeeId,
+        'version': 'V2',
+        'timestamp': DateTime.now().toUtc().toIso8601String(),
+      };
     }
   }
   
@@ -332,6 +338,6 @@ class IoTServiceV2 {
   // 🧹 LIMPEZA E DISPOSE
   void dispose() {
     _logger.info('🧹 Liberando recursos do IoTServiceV2');
-    // Implementar limpeza se necessário
+    _iotRepository.dispose();
   }
 }

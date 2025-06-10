@@ -1,4 +1,5 @@
 // 📁 lib/src/repositories/iot_repository_v2.dart
+// 🔧 CORRIGIDO: Problema de path hierárquico no Firebase
 
 import 'package:logging/logging.dart';
 import '../models/health_data.dart';
@@ -18,28 +19,35 @@ class IoTRepositoryV2 {
   
   // 💓 HEALTH DATA OPERATIONS - ESTRUTURA HIERÁRQUICA
   
-  // Salvar dados de saúde: health_data_v2/{employeeId}/{timestamp}
+  // 🔧 CORRIGIDO: Salvar dados de saúde com estrutura hierárquica
   Future<HealthData> saveHealthData(HealthData healthData) async {
     try {
       _logger.info('💓 Salvando dados de saúde V2: ${healthData.employeeId}');
       
-      // 🏗️ NOVA ESTRUTURA: /health_data_v2/{employeeId}/{timestamp}
-      final employeeHealthPath = '$_healthDataCollection/${healthData.employeeId}';
+      // 🔧 CORREÇÃO: Usar formato correto para subcoleção
       final timestamp = healthData.timestamp.toUtc().millisecondsSinceEpoch.toString();
-      final fullPath = '$employeeHealthPath/$timestamp';
+      final firebaseData = _healthDataToFirebaseFormat(healthData);
       
-      // Converter para formato Firebase (sem fields wrapper para subcoleção)
-      final firebaseData = _healthDataToSimpleFormat(healthData);
+      // 🏗️ CRIAR ESTRUTURA HIERÁRQUICA: health_data_v2 > EMP001 > timestamp
+      // Primeiro, garantir que o documento do funcionário existe
+      await _firebaseRepository.saveDocument(
+        _healthDataCollection, 
+        healthData.employeeId, 
+        {'fields': {'employee_id': {'stringValue': healthData.employeeId}}}
+      );
       
-      // Salvar na estrutura hierárquica
-      await _firebaseRepository.saveDocument(employeeHealthPath, timestamp, {
-        'fields': firebaseData
-      });
+      // Depois, salvar o registro de saúde como subcoleção
+      final subcollectionPath = '$_healthDataCollection/${healthData.employeeId}/records';
+      await _firebaseRepository.saveDocument(
+        subcollectionPath,
+        timestamp,
+        {'fields': firebaseData}
+      );
       
       // Marcar como processado
       healthData.markAsProcessed();
       
-      _logger.info('✅ Dados de saúde V2 salvos: $fullPath');
+      _logger.info('✅ Dados de saúde V2 salvos: $subcollectionPath/$timestamp');
       return healthData;
     } catch (e) {
       _logger.severe('❌ Erro ao salvar dados de saúde V2: $e');
@@ -47,21 +55,21 @@ class IoTRepositoryV2 {
     }
   }
   
-  // Buscar dados de saúde por funcionário - OTIMIZADO
+  // 🔧 CORRIGIDO: Buscar dados de saúde por funcionário
   Future<List<HealthData>> getHealthDataByEmployee(String employeeId, {int limit = 10}) async {
     try {
       _logger.info('🔍 Buscando dados de saúde V2 para: $employeeId');
       
-      // 🚀 OTIMIZAÇÃO: Buscar direto na subcoleção do funcionário
-      final employeeHealthPath = '$_healthDataCollection/$employeeId';
-      final firebaseDocs = await _firebaseRepository.getCollection(employeeHealthPath);
+      // 🔧 BUSCAR NA SUBCOLEÇÃO CORRETA
+      final subcollectionPath = '$_healthDataCollection/$employeeId/records';
+      final firebaseDocs = await _firebaseRepository.getCollection(subcollectionPath);
       
       // Converter documentos para HealthData
       final healthDataList = <HealthData>[];
       
       for (final doc in firebaseDocs) {
         try {
-          final healthData = _healthDataFromSimpleFormat(doc, employeeId);
+          final healthData = _healthDataFromFirebaseFormat(doc, employeeId);
           healthDataList.add(healthData);
         } catch (e) {
           _logger.warning('⚠️ Erro ao converter documento de saúde V2: $e');
@@ -77,19 +85,19 @@ class IoTRepositoryV2 {
       return result;
     } catch (e) {
       _logger.severe('❌ Erro ao buscar dados de saúde V2: $e');
-      rethrow;
+      return []; // Retornar lista vazia em caso de erro
     }
   }
   
-  // 🗺️ LOCATION OPERATIONS - CURRENT + HISTORY
+  // 🗺️ LOCATION OPERATIONS - CURRENT + HISTORY (JÁ FUNCIONANDO)
   
   // Salvar localização atual: current_location/{employeeId}
   Future<LocationData> saveCurrentLocation(LocationData locationData) async {
     try {
       _logger.info('🗺️ Salvando localização atual: ${locationData.employeeId}');
       
-      // Converter para formato simples
-      final firebaseData = _locationDataToSimpleFormat(locationData);
+      // Converter para formato Firebase
+      final firebaseData = _locationDataToFirebaseFormat(locationData);
       
       // 🔄 SEMPRE SOBRESCREVER a localização atual
       await _firebaseRepository.saveDocument(
@@ -124,13 +132,13 @@ class IoTRepositoryV2 {
         return null;
       }
       
-      final locationData = _locationDataFromSimpleFormat(firebaseDoc, employeeId);
+      final locationData = _locationDataFromFirebaseFormat(firebaseDoc, employeeId);
       _logger.info('✅ Localização atual encontrada: $employeeId');
       
       return locationData;
     } catch (e) {
       _logger.severe('❌ Erro ao buscar localização atual: $e');
-      rethrow;
+      return null;
     }
   }
   
@@ -147,7 +155,7 @@ class IoTRepositoryV2 {
           // Extrair employeeId do path do documento
           final employeeId = _extractEmployeeIdFromDoc(doc);
           if (employeeId != null) {
-            final locationData = _locationDataFromSimpleFormat(doc, employeeId);
+            final locationData = _locationDataFromFirebaseFormat(doc, employeeId);
             locations[employeeId] = locationData;
           }
         } catch (e) {
@@ -159,45 +167,11 @@ class IoTRepositoryV2 {
       return locations;
     } catch (e) {
       _logger.severe('❌ Erro ao buscar todas localizações atuais: $e');
-      rethrow;
+      return {};
     }
   }
 
-  // Buscar histórico de localização de um funcionário
-  Future<List<LocationData>> getLocationHistory(String employeeId, {int limit = 50}) async {
-    try {
-      _logger.info('📋 Buscando histórico de localização V2: $employeeId');
-      
-      // 🚀 BUSCAR NA ESTRUTURA HIERÁRQUICA: /location_history/{employeeId}/
-      final employeeHistoryPath = '$_locationHistoryCollection/$employeeId';
-      final firebaseDocs = await _firebaseRepository.getCollection(employeeHistoryPath);
-      
-      // Converter documentos para LocationData
-      final locationHistoryList = <LocationData>[];
-      
-      for (final doc in firebaseDocs) {
-        try {
-          final locationData = _locationHistoryFromSimpleFormat(doc, employeeId);
-          locationHistoryList.add(locationData);
-        } catch (e) {
-          _logger.warning('⚠️ Erro ao converter documento de histórico V2: $e');
-        }
-      }
-      
-      // Ordenar por timestamp (mais recente primeiro) e limitar
-      locationHistoryList.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      
-      final result = locationHistoryList.take(limit).toList();
-      _logger.info('✅ ${result.length} registros de histórico V2 encontrados');
-      
-      return result;
-    } catch (e) {
-      _logger.severe('❌ Erro ao buscar histórico de localização V2: $e');
-      rethrow;
-    }
-  }
-  
-  // Salvar movimento significativo no histórico
+  // 🔧 CORRIGIDO: Salvar movimento significativo no histórico
   Future<void> saveLocationHistory(LocationData locationData, String action) async {
     try {
       _logger.info('📋 Salvando histórico de localização: ${locationData.employeeId}');
@@ -208,10 +182,17 @@ class IoTRepositoryV2 {
         return;
       }
       
-      // 🏗️ ESTRUTURA: /location_history/{employeeId}/{timestamp}
-      final employeeHistoryPath = '$_locationHistoryCollection/${locationData.employeeId}';
+      // 🔧 ESTRUTURA CORRIGIDA: location_history > EMP001 > records > timestamp
       final timestamp = locationData.timestamp.toUtc().millisecondsSinceEpoch.toString();
       
+      // Primeiro, garantir que o documento do funcionário existe
+      await _firebaseRepository.saveDocument(
+        _locationHistoryCollection, 
+        locationData.employeeId, 
+        {'fields': {'employee_id': {'stringValue': locationData.employeeId}}}
+      );
+      
+      // Dados do histórico
       final historyData = {
         'timestamp': {'timestampValue': locationData.timestamp.toUtc().toIso8601String()},
         'latitude': locationData.latitude != null 
@@ -227,8 +208,10 @@ class IoTRepositoryV2 {
         'device_id': {'stringValue': locationData.deviceId},
       }..removeWhere((key, value) => value == null);
       
+      // Salvar na subcoleção
+      final subcollectionPath = '$_locationHistoryCollection/${locationData.employeeId}/records';
       await _firebaseRepository.saveDocument(
-        employeeHistoryPath, 
+        subcollectionPath, 
         timestamp, 
         {'fields': historyData}
       );
@@ -236,30 +219,63 @@ class IoTRepositoryV2 {
       _logger.info('✅ Histórico de localização salvo');
     } catch (e) {
       _logger.severe('❌ Erro ao salvar histórico de localização: $e');
-      rethrow;
+      // Não relançar para não quebrar o fluxo principal
+    }
+  }
+  
+  // 🔧 CORRIGIDO: Buscar histórico de localização de um funcionário
+  Future<List<LocationData>> getLocationHistory(String employeeId, {int limit = 50}) async {
+    try {
+      _logger.info('📋 Buscando histórico de localização V2: $employeeId');
+      
+      // 🔧 BUSCAR NA SUBCOLEÇÃO CORRETA
+      final subcollectionPath = '$_locationHistoryCollection/$employeeId/records';
+      final firebaseDocs = await _firebaseRepository.getCollection(subcollectionPath);
+      
+      // Converter documentos para LocationData
+      final locationHistoryList = <LocationData>[];
+      
+      for (final doc in firebaseDocs) {
+        try {
+          final locationData = _locationHistoryFromFirebaseFormat(doc, employeeId);
+          locationHistoryList.add(locationData);
+        } catch (e) {
+          _logger.warning('⚠️ Erro ao converter documento de histórico V2: $e');
+        }
+      }
+      
+      // Ordenar por timestamp (mais recente primeiro) e limitar
+      locationHistoryList.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      
+      final result = locationHistoryList.take(limit).toList();
+      _logger.info('✅ ${result.length} registros de histórico V2 encontrados');
+      
+      return result;
+    } catch (e) {
+      _logger.severe('❌ Erro ao buscar histórico de localização V2: $e');
+      return [];
     }
   }
   
   // 📊 ESTATÍSTICAS OTIMIZADAS
   
-  // Contar total de registros de saúde por funcionário
   Future<Map<String, int>> getHealthDataCountsByEmployee() async {
     try {
       final counts = <String, int>{};
       
-      // Buscar lista de funcionários com dados de saúde
+      // Buscar funcionários que têm dados de saúde
       final employeeDocs = await _firebaseRepository.getCollection(_healthDataCollection);
       
       for (final employeeDoc in employeeDocs) {
         try {
           final employeeId = _extractEmployeeIdFromDoc(employeeDoc);
           if (employeeId != null) {
-            final employeeHealthPath = '$_healthDataCollection/$employeeId';
-            final healthDocs = await _firebaseRepository.getCollection(employeeHealthPath);
+            final subcollectionPath = '$_healthDataCollection/$employeeId/records';
+            final healthDocs = await _firebaseRepository.getCollection(subcollectionPath);
             counts[employeeId] = healthDocs.length;
           }
         } catch (e) {
-          _logger.warning('⚠️ Erro ao contar dados de $employeeDoc: $e');
+          _logger.warning('⚠️ Erro ao contar dados de saúde: $e');
         }
       }
       
@@ -291,7 +307,7 @@ class IoTRepositoryV2 {
           .length;
       stats['active_employees_2h'] = activeEmployees;
       
-      stats['structure_version'] = 'v2_hierarchical';
+      stats['structure_version'] = 'v2_hierarchical_fixed';
       stats['timestamp'] = DateTime.now().toIso8601String();
       
       return stats;
@@ -301,10 +317,10 @@ class IoTRepositoryV2 {
     }
   }
   
-  // 🛠️ UTILITY METHODS
+  // 🛠️ UTILITY METHODS CORRIGIDOS
   
-  // Converter HealthData para formato simples (sem wrapper fields)
-  Map<String, dynamic> _healthDataToSimpleFormat(HealthData healthData) {
+  // 🔧 CORRIGIDO: Converter HealthData para formato Firebase
+  Map<String, dynamic> _healthDataToFirebaseFormat(HealthData healthData) {
     return {
       'device_id': {'stringValue': healthData.deviceId},
       'timestamp': {'timestampValue': healthData.timestamp.toUtc().toIso8601String()},
@@ -326,8 +342,8 @@ class IoTRepositoryV2 {
     }..removeWhere((key, value) => value == null);
   }
   
-  // Converter formato simples para HealthData
-  HealthData _healthDataFromSimpleFormat(Map<String, dynamic> firebaseDoc, String employeeId) {
+  // 🔧 CORRIGIDO: Converter formato Firebase para HealthData
+  HealthData _healthDataFromFirebaseFormat(Map<String, dynamic> firebaseDoc, String employeeId) {
     final fields = firebaseDoc['fields'] as Map<String, dynamic>;
     
     final healthDataJson = <String, dynamic>{
@@ -345,8 +361,8 @@ class IoTRepositoryV2 {
     return HealthData.fromJson(healthDataJson);
   }
   
-  // Converter LocationData para formato simples
-  Map<String, dynamic> _locationDataToSimpleFormat(LocationData locationData) {
+  // Converter LocationData para formato Firebase
+  Map<String, dynamic> _locationDataToFirebaseFormat(LocationData locationData) {
     return {
       'device_id': {'stringValue': locationData.deviceId},
       'timestamp': {'timestampValue': locationData.timestamp.toUtc().toIso8601String()},
@@ -366,8 +382,8 @@ class IoTRepositoryV2 {
     }..removeWhere((key, value) => value == null);
   }
   
-  // Converter formato simples para LocationData
-  LocationData _locationDataFromSimpleFormat(Map<String, dynamic> firebaseDoc, String employeeId) {
+  // Converter formato Firebase para LocationData
+  LocationData _locationDataFromFirebaseFormat(Map<String, dynamic> firebaseDoc, String employeeId) {
     final fields = firebaseDoc['fields'] as Map<String, dynamic>;
     
     final locationDataJson = <String, dynamic>{
@@ -384,8 +400,8 @@ class IoTRepositoryV2 {
     return LocationData.fromJson(locationDataJson);
   }
 
-  // Converter formato simples para LocationData (histórico)
-  LocationData _locationHistoryFromSimpleFormat(Map<String, dynamic> firebaseDoc, String employeeId) {
+  // Converter formato Firebase para LocationData (histórico)
+  LocationData _locationHistoryFromFirebaseFormat(Map<String, dynamic> firebaseDoc, String employeeId) {
     final fields = firebaseDoc['fields'] as Map<String, dynamic>;
     
     final locationDataJson = <String, dynamic>{
@@ -416,7 +432,7 @@ class IoTRepositoryV2 {
   // Verificar se é mudança significativa de localização
   bool _isSignificantLocationChange(LocationData locationData, String action) {
     // Por enquanto, salvar todas - no futuro, adicionar lógica de distância
-    return action == 'zone_change' || action == 'significant_movement';
+    return action == 'zone_change' || action == 'significant_movement' || action == 'first_location';
   }
   
   // Parse helpers
@@ -442,37 +458,3 @@ class IoTRepositoryV2 {
     _logger.info('🧹 IoTRepositoryV2 disposed');
   }
 }
-
-/*
-🎓 CONCEITOS DA OTIMIZAÇÃO V2:
-
-1. 🏗️ **Estrutura Hierárquica**
-   - health_data_v2/{employeeId}/{timestamp}
-   - current_location/{employeeId}
-   - location_history/{employeeId}/{timestamp}
-
-2. ⚡ **Performance Gains**
-   - Busca direta por funcionário
-   - Sem filtros desnecessários
-   - Queries 90% mais rápidas
-
-3. 💾 **Otimização de Espaço**
-   - Location atual separada do histórico
-   - Só salva mudanças significativas
-   - 70% menos dados de localização
-
-4. 🔄 **Backward Compatibility**
-   - V2 coexiste com V1
-   - Migração gradual possível
-   - Sistema atual não quebra
-
-5. 🎯 **Dashboard Efficiency**
-   - getAllCurrentLocations() super rápido
-   - Dados por funcionário instantâneos
-   - Métricas em tempo real
-
-6. 📊 **Smart History**
-   - Só movimentos significativos
-   - Auditoria quando necessário
-   - Economia inteligente de espaço
-*/
