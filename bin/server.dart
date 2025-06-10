@@ -62,7 +62,7 @@ void main() async {
   final port = int.parse(env['PORT'] ?? '8080');
   final host = env['HOST'] ?? 'localhost';
   
-  final server = await shelf_io.serve(pipeline, host, port);
+  await shelf_io.serve(pipeline, host, port);  // ✅ Removido variável não usada
   
   _logger.info('🌐 Servidor rodando em http://$host:$port');
   _logger.info('🔧 Ambiente: ${env['NODE_ENV'] ?? 'development'}');
