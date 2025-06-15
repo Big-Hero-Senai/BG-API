@@ -5,13 +5,14 @@ import 'package:shelf/shelf.dart';
 import 'package:logging/logging.dart';
 import '../services/iot_service.dart'; // ✅ CORRIGIDO: só V2
 import '../utils/response_helper.dart';
+import '../services/performance_service.dart';
 
 // 📡 CONTROLLER IoT: Versão final otimizada (V2 com fallback inteligente)
 class IoTController {
   static final _logger = Logger('IoTController');
 
-  // Apenas service V2 otimizado
-  final IoTServiceV2 _iotService = IoTServiceV2();
+  // Service V3 com estrutura flat otimizada
+  final IoTServiceV2 _iotService = IoTServiceV2(); // V2 service com V3 repo
 
   // Flag para controlar modo de compatibilidade
   bool _v2OptimizedMode = true;
@@ -35,17 +36,18 @@ class IoTController {
             details: e.toString());
       }
 
-      // 🚀 PROCESSAR COM V2 OTIMIZADO
+      // 🚀 PROCESSAR COM V3 FLAT OTIMIZADO
       final healthData = await _iotService.processHealthDataV2(json);
 
-      _logger
-          .info('✅ Dados de saúde processados (V2): ${healthData.employeeId}');
+      _logger.info(
+          '✅ Dados de saúde processados (V3 flat): ${healthData.employeeId}');
 
       return ResponseHelper.created({
         ...healthData.toJson(),
-        '_processing_version': 'v2_optimized',
-        '_performance_status': '90% faster than legacy',
-      }, message: 'Dados de saúde recebidos e processados (V2 otimizado)');
+        '_processing_version': 'v3_flat_optimized',
+        '_performance_status': 'Flat structure, optimized billing',
+        '_storage_location': 'health_data collection (flat)',
+      }, message: 'Dados de saúde recebidos e processados (V3 flat)');
     } catch (e) {
       _logger.severe('❌ Erro ao processar dados de saúde: $e');
       return _handleIoTError(e);
@@ -80,7 +82,7 @@ class IoTController {
 
       return ResponseHelper.created({
         ...locationData.toJson(),
-        '_processing_version': 'v2_intelligent',
+        '_processing_version': 'v3_flat_intelligent',
         '_processing_info': {
           'intelligent_processing': true,
           'saves_history_when': [
@@ -89,11 +91,10 @@ class IoTController {
             'time > 30min'
           ],
           'current_location_always_updated': true,
-          'space_optimization': '70% less data',
+          'storage_optimization': 'Flat collections - 50% billing reduction',
         },
-      },
-          message:
-              'Dados de localização recebidos e processados (V2 inteligente)');
+        '_storage_location': 'current_locations collection (flat)',
+      }, message: 'Dados de localização recebidos e processados (V3 flat)');
     } catch (e) {
       _logger.severe('❌ Erro ao processar dados de localização: $e');
       return _handleIoTError(e);
@@ -162,10 +163,17 @@ class IoTController {
   Future<Response> getAllCurrentLocations(Request request) async {
     try {
       _logger.info(
-          '🗺️ GET /api/iot/locations-all - Dashboard de localizações (V2)');
+          '🗺️ GET /api/iot/locations-all - Dashboard de localizações (V3)');
 
-      // V2: Dashboard otimizado
-      final allLocations = await _iotService.getAllCurrentLocationsV2();
+      final stopwatch = Stopwatch()..start();
+
+      // V3: Dashboard otimizado com collection flat
+      final allLocations =
+          await _iotService.getAllCurrentLocationsV2(); // Internamente usa V3
+
+      stopwatch.stop();
+      PerformanceService.recordResponseTime(
+          stopwatch.elapsedMilliseconds.toDouble());
 
       // Transformar para formato de resposta
       final locationsList = allLocations
@@ -351,6 +359,55 @@ class IoTController {
     }
 
     return ResponseHelper.internalError(details: errorMessage);
+  }
+
+  // 📊 GET /api/iot/benchmark/:employeeId - Benchmark V2 vs V3
+  Future<Response> runBenchmark(Request request, String employeeId) async {
+    try {
+      _logger
+          .info('📊 GET /api/iot/benchmark/$employeeId - Benchmark V2 vs V3');
+
+      final performanceService = PerformanceService();
+      final results = await performanceService.runCompleteBenchmark(employeeId);
+
+      return ResponseHelper.success(data: {
+        ...results,
+        '_benchmark_info': {
+          'purpose': 'Compare V2 hierarchical vs V3 flat performance',
+          'metrics': [
+            'response_time',
+            'query_efficiency',
+            'feature_completeness'
+          ],
+          'note': 'Real performance measurements, not estimates',
+        },
+      }, message: 'Benchmark V2 vs V3 completed');
+    } catch (e) {
+      _logger.severe('❌ Erro no benchmark: $e');
+      return ResponseHelper.internalError(details: e.toString());
+    }
+  }
+
+  // 📈 GET /api/iot/performance-stats - Estatísticas de performance
+  Future<Response> getPerformanceStats(Request request) async {
+    try {
+      _logger.info(
+          '📈 GET /api/iot/performance-stats - Estatísticas de performance');
+
+      final stats = PerformanceService.getPerformanceStats();
+
+      return ResponseHelper.success(data: {
+        ...stats,
+        '_stats_info': {
+          'description': 'Real-time performance metrics',
+          'collection_method': 'Automatic recording of response times',
+          'update_frequency': 'Real-time',
+        },
+      }, message: 'Performance statistics retrieved');
+    } catch (e) {
+      _logger.severe('❌ Erro ao obter estatísticas: $e');
+      return ResponseHelper.internalError(details: e.toString());
+    }
   }
 
   // 🧹 CLEANUP

@@ -4,15 +4,14 @@
 import 'package:logging/logging.dart';
 import '../models/health_data.dart';
 import '../models/location_data.dart';
-import '../repositories/iot_repository_v2.dart'; // 🔧 CORRIGIDO: import correto
+import '../repositories/iot_repository_v3.dart';
 import '../services/employee_service.dart';
 
 // 🧠 SERVICE V2: Lógica inteligente com estrutura hierárquica otimizada
 class IoTServiceV2 {
   static final _logger = Logger('IoTServiceV2');
 
-  final IoTRepositoryV2 _iotRepository =
-      IoTRepositoryV2(); // 🔧 CORRIGIDO: classe correta
+  final IoTRepositoryV3 _iotRepository = IoTRepositoryV3();
   final EmployeeService _employeeService = EmployeeService();
 
   // 💓 PROCESSAR DADOS DE SAÚDE - ESTRUTURA OTIMIZADA

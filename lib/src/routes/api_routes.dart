@@ -63,7 +63,13 @@ class ApiRoutes {
     // 📊 ROTAS IoT V2 - ESTATÍSTICAS E CONFIGURAÇÃO
     _router.get('/api/iot/stats', _iotController.getIoTStats);
     _router.post('/api/iot/config', _iotController.configureSystem);
-    _router.post('/api/iot/test', _iotController.testIoTEndpoint);
+
+    _router.get('/api/iot/benchmark/<employeeId>',
+        (Request request, String employeeId) async {
+      return await _iotController.runBenchmark(request, employeeId);
+    });
+    _router.get(
+        '/api/iot/performance-stats', _iotController.getPerformanceStats);
 
     // 📄 ROTAS DE DOCUMENTAÇÃO (existentes)
     _router.get('/', DocumentationController.getDocumentation);
